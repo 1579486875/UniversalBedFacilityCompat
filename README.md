@@ -1,5 +1,7 @@
 # 床铺增益建筑通用兼容
 
+> **📦 下载**：[最新版本（Release）](https://github.com/1579486875/UniversalBedFacilityCompat/releases/latest) —— 下载 zip，解压后把整个文件夹放进 RimWorld 的 `Mods\` 目录即可（需要 Harmony）。
+
 > **一句话**：打通模组之间「床」与「床铺家具」的壁垒 ——
 > 让你的**模组床**能用上别的模组的衣柜，也让别的模组的衣柜能作用于你的模组床。
 
@@ -430,7 +432,7 @@ RimWorld 随后会自动把它清理掉，游戏照常进行，可以安全忽�
 
 ```powershell
 dotnet build UniversalBedFacilityCompat.csproj -c Release `
-  -p:RimWorldDir="D:\steam\steamapps\common\RimWorld" `
+  -p:RimWorldDir="<你的 RimWorld 安装目录>" `
   -p:HarmonyDll="<0Harmony.dll 的完整路径>"
 ```
 
@@ -480,8 +482,8 @@ dotnet build UniversalBedFacilityCompat.csproj -c Release `
 
 ```powershell
 dotnet build "Source\UniversalBedFacilityCompat.csproj" -c Release `
-    -p:RimWorldDir="D:\steam\steamapps\common\RimWorld" `
-    -p:HarmonyDll="D:\steam\steamapps\common\RimWorld\Mods\Harmony\Assemblies\0Harmony.dll"
+    -p:RimWorldDir="<你的 RimWorld 安装目录>" `
+    -p:HarmonyDll="<你的 RimWorld 安装目录>\Mods\Harmony\Assemblies\0Harmony.dll"
 ```
 
 产物直接输出到 `Assemblies\UniversalBedFacilityCompat.dll`（仓库内已附编译好的 dll，可直接使用）。
