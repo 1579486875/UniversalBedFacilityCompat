@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  床铺增益建筑通用兼容 / Universal Bed Facility Compatibility
+  ────────────────────────────────────────────────────────────
+  这是本模组唯一的新增 Def：一个「兼容策略」配置对象。
+
+  它平时什么都不做（两个排除清单都是空的），作用是给玩家和模组作者一个逃生舱：
+  当自动分类出现误判时，可以在这里点名排除。
+
+  用法（在自己的模组里打补丁，不需要改这个文件）：
+
+    <Operation Class="PatchOperationAdd">
+      <xpath>Defs/UniversalBedFacilityCompat.CompatPolicyDef[defName="UBFC_DefaultPolicy"]/excludedFacilities</xpath>
+      <value><li>SomeMod_DecorativeDresser</li></value>
+    </Operation>
+
+    <Operation Class="PatchOperationAdd">
+      <xpath>Defs/UniversalBedFacilityCompat.CompatPolicyDef[defName="UBFC_DefaultPolicy"]/excludedBeds</xpath>
+      <value><li>SomeMod_DisplayOnlyBed</li></value>
+    </Operation>
+
+  两个清单的含义：
+    excludedFacilities —— 这些家具不参与通用床铺链接（既不会被判定为床用设施，也不会被注入到任何床）。
+    excludedBeds       —— 这些床保持原版行为，不接受本模组的通用链接注入。
+
+  注意：本模组不新增任何 ThingDef、不新增任何建筑、不改动任何原版数据，
+  所以它不提供任何游戏内容，移除后也不会在存档里留下任何残留。
+-->
+<Defs>
+
+  <UniversalBedFacilityCompat.CompatPolicyDef>
+    <defName>UBFC_DefaultPolicy</defName>
+    <label>bed facility compatibility policy</label>
+    <description>Exclusion lists for the automatic bed-facility linking. Both lists are empty by default.</description>
+
+    <!--
+      两个清单刻意留空（也就是不写标签），这样 C# 字段上的 new List<ThingDef>() 默认值直接生效。
+      空的自定义列表标签在 RimWorld 的 DirectXmlToObject 里并没有明确语义，原版 XML 也从不这么写，
+      所以这里不冒这个险。
+
+      需要填的时候照下面这样写（把标签连同内容一起补上即可）：
+
+        <excludedFacilities>
+          <li>SomeMod_DecorativeDresser</li>
+        </excludedFacilities>
+
+        <excludedBeds>
+          <li>SomeMod_DisplayOnlyBed</li>
+        </excludedBeds>
+    -->
+  </UniversalBedFacilityCompat.CompatPolicyDef>
+
+</Defs>

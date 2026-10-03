@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ════════════════════════════════════════════════════════════════════════
+   床铺增益建筑通用兼容 / Universal Bed Facility Compatibility
+   编译配置
+  ════════════════════════════════════════════════════════════════════════
+
+   目标框架：net48
+     RimWorld 1.6 运行在 Unity 的 Mono（.NET Framework 4.8 兼容层）上，
+     因此必须编译成 net48，不能用 .NET Core / .NET 5+ 的目标框架，
+     否则游戏加载程序集时会报「无法加载程序集」。
+     本模组只用到 net48 就有的 API，没有额外依赖。
+
+   输出路径：..\Assemblies\
+     编译产物直接落到模组的 Assemblies 文件夹，游戏即可识别：
+         UniversalBedFacilityCompat\
+         ├── Assemblies\UniversalBedFacilityCompat.dll   ← 编译产物
+         └── Source\UniversalBedFacilityCompat.csproj    ← 本文件
+
+   需要改的两个路径：
+     RimWorldDir —— 你的 RimWorld 安装目录（含 RimWorldWin64_Data 的那一层）
+     HarmonyDll  —— 0Harmony.dll 的位置
+
+   两种编译方式：
+     A) 命令行（推荐，不需要装 NuGet 包）：
+          dotnet build "Source\UniversalBedFacilityCompat.csproj" -c Release `
+              -p:RimWorldDir="D:\steam\steamapps\common\RimWorld" `
+              -p:HarmonyDll="<你的 0Harmony.dll 完整路径>"
+
+     B) Visual Studio / Rider：直接用 IDE 打开本文件，
+        必要时在下面把 RimWorldDir / HarmonyDll 的默认值改成你自己的路径。
+
+   注意：本项目引用的所有游戏程序集都标了 <Private>false</Private>，
+         也就是「编译时需要、但不要复制到输出目录」——
+         这些 DLL 在游戏运行时由 RimWorld 自己提供，复制过去只会造成冲突。
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>UniversalBedFacilityCompat</AssemblyName>
+    <Version>1.0.2</Version>
+    <RootNamespace>UniversalBedFacilityCompat</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+
+    <!-- 产物直接落到模组的 Assemblies 文件夹，不要多套一层 net48\ -->
+    <OutputPath>..\Assemblies\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+
+    <!-- 模组程序集不需要自动生成的 AssemblyInfo，也不需要 pdb -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DebugType>none</DebugType>
+    <Deterministic>true</Deterministic>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- ── 路径探测：全部可以被命令行上的同名属性覆盖 ── -->
+  <PropertyGroup>
+    <RimWorldDir Condition="'$(RimWorldDir)' == ''">D:\steam\steamapps\common\RimWorld</RimWorldDir>
+    <ManagedDir>$(RimWorldDir)\RimWorldWin64_Data\Managed</ManagedDir>
+
+    <!-- Harmony 常见位置，按顺序探测；都不存在时保留第一个作为最终值并给出可读的报错 -->
+    <HarmonyDll Condition="'$(HarmonyDll)' == '' AND Exists('$(RimWorldDir)\Mods\Harmony\Assemblies\0Harmony.dll')">$(RimWorldDir)\Mods\Harmony\Assemblies\0Harmony.dll</HarmonyDll>
+    <HarmonyDll Condition="'$(HarmonyDll)' == '' AND Exists('$(RimWorldDir)\Mods\0Harmony\Assemblies\0Harmony.dll')">$(RimWorldDir)\Mods\0Harmony\Assemblies\0Harmony.dll</HarmonyDll>
+    <HarmonyDll Condition="'$(HarmonyDll)' == '' AND Exists('$(ManagedDir)\0Harmony.dll')">$(ManagedDir)\0Harmony.dll</HarmonyDll>
+    <HarmonyDll Condition="'$(HarmonyDll)' == '' AND Exists('D:\steam\steamapps\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll')">D:\steam\steamapps\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll</HarmonyDll>
+    <HarmonyDll Condition="'$(HarmonyDll)' == ''">$(RimWorldDir)\Mods\Harmony\Assemblies\0Harmony.dll</HarmonyDll>
+  </PropertyGroup>
+
+  <!-- 路径不存在时给出明确的中文报错，而不是让 csc 抛一句难懂的找不到引用 -->
+  <Target Name="UbfcValidatePaths" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(ManagedDir)\Assembly-CSharp.dll')"
+           Text="找不到 RimWorld 程序集：$(ManagedDir)\Assembly-CSharp.dll。请用 -p:RimWorldDir=&quot;你的 RimWorld 安装目录&quot; 指定正确路径。" />
+    <Error Condition="!Exists('$(HarmonyDll)')"
+           Text="找不到 0Harmony.dll：$(HarmonyDll)。请用 -p:HarmonyDll=&quot;0Harmony.dll 的完整路径&quot; 指定（可在创意工坊 2009463077 或 Mods\Harmony\Assemblies 下找到）。" />
+  </Target>
+
+  <ItemGroup>
+    <!-- RimWorld 本体 -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- Unity：Rect / Vector3 / Color 在 CoreModule，IMGUI 相关在 IMGUIModule -->
+    <Reference Include="UnityEngine">
+      <HintPath>$(ManagedDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(ManagedDir)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- Harmony：仅用于 ResolveReferences 上的保险丝补丁，运行时由 brrainz.harmony 提供 -->
+    <Reference Include="0Harmony">
+      <HintPath>$(HarmonyDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

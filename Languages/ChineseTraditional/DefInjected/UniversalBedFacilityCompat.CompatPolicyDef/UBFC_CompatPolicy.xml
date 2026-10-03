@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DefInjected 路徑規則：DefInjected/<Def 類別的完整名稱>/<任意檔名>.xml
+  自訂命名空間的 Def 類別必須帶上命名空間，因此這裡的目錄名是
+  UniversalBedFacilityCompat.CompatPolicyDef（RimWorld 的
+  GenTypes.GetTypeInAnyAssembly 會用這個目錄名去尋找型別）。
+-->
+<LanguageData>
+
+  <UBFC_DefaultPolicy.label>床鋪增益相容策略</UBFC_DefaultPolicy.label>
+  <UBFC_DefaultPolicy.description>控制床鋪增益建築自動連結的排除清單。兩份清單預設為空，也就是完全交給自動判定。當自動判定出現誤判時，把對應的 defName 寫進排除清單即可。</UBFC_DefaultPolicy.description>
+
+</LanguageData>

@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ═══════════ 設定介面 ═══════════ -->
+
+  <UBFC_Set_Relink_Label>進入地圖時自動重新連結</UBFC_Set_Relink_Label>
+  <UBFC_Set_Relink_Tip>開啟後，舊存檔裡早就建好的衣櫃、屏風等家具，會在進入地圖後的第一個 tick 自動重新連結，立刻對床生效，不必拆掉重建。這只是一次性開銷，處理完就不再執行。</UBFC_Set_Relink_Tip>
+
+  <UBFC_Set_Verbose_Label>輸出詳細診斷日誌</UBFC_Set_Verbose_Label>
+  <UBFC_Set_Verbose_Tip>在日誌裡輸出掃描統計、補全明細與重鏈耗時，並在下方報告裡列出辨識到的設施與床的 DefName。排查「某個櫃子為什麼對這張床不生效」時打開它。</UBFC_Set_Verbose_Tip>
+
+  <UBFC_Set_Aggressive_Label>激進模式（把所有設施都當成床用）</UBFC_Set_Aggressive_Label>
+  <UBFC_Set_Aggressive_Tip>預設關閉。關閉時只處理能確認是「床用設施」的家具：它原本就能連結到至少一張床，或者帶有明確綁床的放置限制。開啟後，所有帶 CompProperties_Facility 的家具都會參與床鋪連結——用來收拾那些作者忘記掛接任何床、導致原本什麼都連不上的家具。\n變更後請點下面的「重新掃描」以立即套用。</UBFC_Set_Aggressive_Tip>
+
+  <UBFC_Set_LinkLimit_Label>忽略連結數量上限</UBFC_Set_LinkLimit_Label>
+  <UBFC_Set_LinkLimit_Tip>預設關閉。原版限制同一張床上同種設施最多生效一個（衣櫃資訊面板裡的「每個建築最大連結數」）。開啟後這個上限被放開，一張床可以同時吃到多個同種設施。\n這會明顯改變遊戲平衡，請自行斟酌。變更後請點下面的「重新掃描」。</UBFC_Set_LinkLimit_Tip>
+
+  <UBFC_Set_MaxDistance_Label>修正過小的連結距離</UBFC_Set_MaxDistance_Label>
+  <UBFC_Set_MaxDistance_Tip>預設開啟。有些家具的最大連結距離被作者寫成小於一個格子的值（例如復古家具的泰迪熊是 0.9）。由於格子的最小間距是 1，這類數值在機制上等同於「必須和床佔同一格」，放在床旁邊永遠連不上床。開啟後會把這類距離抬到 2 格，讓緊鄰的床也能生效。\n只會改動取值落在 (0, 1) 之間的設施，其它距離一律不碰。變更後請點下面的「重新掃描」。</UBFC_Set_MaxDistance_Tip>
+
+  <UBFC_Button_Rescan>立即重新掃描</UBFC_Button_Rescan>
+
+  <UBFC_Report_Title>本次掃描結果：</UBFC_Report_Title>
+
+  <!-- ═══════════ 掃描報告 ═══════════ -->
+
+  <UBFC_Report_NotReady>掃描尚未完成（Def 可能還沒載入完），暫時沒有資料。</UBFC_Report_NotReady>
+  <UBFC_Report_Beds>· 辨識到床：{0} 張</UBFC_Report_Beds>
+  <UBFC_Report_Facilities>· 辨識到床用設施：{0} 個</UBFC_Report_Facilities>
+  <UBFC_Report_Injected>· 新增床鋪連結：{0} 條</UBFC_Report_Injected>
+  <UBFC_Report_Rebuilt>· 重建設施連結表：{0} 份</UBFC_Report_Rebuilt>
+  <UBFC_Report_BedsWithoutComp>· 注意：另有 {0} 張床缺少 CompAffectedByFacilities 組件，設施無法附著，需由床所屬的模組補上。</UBFC_Report_BedsWithoutComp>
+  <UBFC_Report_ExtraBeds>· 其中透過連結表額外辨識出 {0} 個非 Building_Bed 類但顯然屬於床的建築</UBFC_Report_ExtraBeds>
+  <UBFC_Report_FacilityList>· 設施清單：{0}</UBFC_Report_FacilityList>
+  <UBFC_Report_BedList>· 床清單：{0}</UBFC_Report_BedList>
+
+  <!-- ═══════════ 日誌 ═══════════ -->
+
+  <UBFC_Log_EmptyDefDatabase>DefDatabase 為空，本次未做任何處理。</UBFC_Log_EmptyDefDatabase>
+  <UBFC_Log_InitFailed>初始化過程中發生異常，本模組本次未生效（遊戲其餘部分不受影響）：</UBFC_Log_InitFailed>
+  <UBFC_Log_ScanDone>掃描完成：床 {0} 張、床用設施 {1} 個、新增連結 {2} 條、重建連結表 {3} 份。</UBFC_Log_ScanDone>
+  <UBFC_Log_ExtraBeds>另外透過連結表辨識出 {0} 個非 Building_Bed 類但顯然屬於床的建築，已一併納入。</UBFC_Log_ExtraBeds>
+  <UBFC_Log_BedsWithoutComp>有 {0} 個 Building_Bed 類 Def 完全沒有 CompProperties_AffectedByFacilities 組件，設施在機制上無法附著於它們。這需要由那些床所屬的模組自行補上該組件，本模組無法代為處理。</UBFC_Log_BedsWithoutComp>
+  <UBFC_Log_FuseApplied>保險絲補全：{0} 新增了 {1} 個床連結目標（有人在執行期重建了它的連結表）。</UBFC_Log_FuseApplied>
+  <UBFC_Log_RelinkDone>地圖 {0} 重新連結完成，共處理 {1} 個設施。</UBFC_Log_RelinkDone>
+  <UBFC_Log_RelinkAllDone>手動重新掃描後已重新整理 {0} 張地圖的家具連結，耗時 {1} 毫秒。</UBFC_Log_RelinkAllDone>
+  <UBFC_Log_RelinkFailed>重新整理地圖家具連結時發生異常。連結表本身已經改好並生效，新建的家具不受影響；受影響的只是「地圖上已經建好的家具」需要重新進出一次地圖才會重新整理：</UBFC_Log_RelinkFailed>
+  <UBFC_Log_MissingBedBaseline>內部一致性警告：床 {0} 沒有基準記錄，本次跳過它的白名單重建（保留原資料，不做任何刪改）。</UBFC_Log_MissingBedBaseline>
+  <UBFC_Log_BootstrapFailed>引導階段發生未預期異常，本模組本次未生效（遊戲其餘部分不受影響）：</UBFC_Log_BootstrapFailed>
+  <UBFC_Log_IntactCheckFailed>完整性自檢失敗（本次略過，下一個 tick 會重試）</UBFC_Log_IntactCheckFailed>
+  <UBFC_Log_HarmonyFailed>Harmony 補丁載入失敗。核心功能不受影響 —— 相容效果照常生效，只是少了一層「執行期連結表被打回原形時自動補齊」的保險：</UBFC_Log_HarmonyFailed>
+  <UBFC_Log_MaxDistanceFixed>距離修正：{0} 的最大連結距離原本是 {1}（小於一個格子，機制上等於永遠連不上床），已抬到 {2}。</UBFC_Log_MaxDistanceFixed>
+  <UBFC_Log_TablesTampered>啟動後期偵測到床鋪連結表被其它模組重建，已就地重新注入。功能不受影響。</UBFC_Log_TablesTampered>
+  <UBFC_Log_OverlappingDefs>注意：有 {0} 個 Def 既是床、又是床鋪家具。按原版規則它們會把自己寫進自己的連結表、憑空給自己一份加成；本模組已主動切斷這條「自己連自己」的記錄，它們與其它建築的連結不受影響。</UBFC_Log_OverlappingDefs>
+
+</LanguageData>

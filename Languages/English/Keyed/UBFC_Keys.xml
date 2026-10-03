@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <!-- ═══════════ Settings window ═══════════ -->
+
+  <UBFC_Set_Relink_Label>Relink existing furniture on map load</UBFC_Set_Relink_Label>
+  <UBFC_Set_Relink_Tip>When enabled, dressers, screens and other furniture that were already built in an old save get relinked on the first tick after the map loads, so they take effect immediately without being rebuilt. This is a one-time cost and is skipped afterwards.</UBFC_Set_Relink_Tip>
+
+  <UBFC_Set_Verbose_Label>Verbose diagnostic logging</UBFC_Set_Verbose_Label>
+  <UBFC_Set_Verbose_Tip>Prints scan statistics, injection details and relink timing to the log, and lists the detected facilities and beds in the report below. Useful when investigating why a specific piece of furniture does not affect a specific bed.</UBFC_Set_Verbose_Tip>
+
+  <UBFC_Set_Aggressive_Label>Aggressive mode (treat every facility as bed furniture)</UBFC_Set_Aggressive_Label>
+  <UBFC_Set_Aggressive_Tip>Off by default. While off, only furniture that can be confirmed as bed furniture is processed: it either already links to at least one bed, or it carries a bed-specific placement constraint. When on, every def with CompProperties_Facility participates in bed linking — useful for furniture whose author forgot to attach it to any bed, leaving it completely inert.\nClick "Rescan now" below to apply immediately.</UBFC_Set_Aggressive_Tip>
+
+  <UBFC_Set_LinkLimit_Label>Ignore link count limit</UBFC_Set_LinkLimit_Label>
+  <UBFC_Set_LinkLimit_Tip>Off by default. Vanilla allows only one facility of the same kind to affect a given building (the "max simultaneous connections" line in the furniture's info panel). When on, that cap is lifted and a single bed can benefit from several identical facilities at once.\nThis noticeably changes game balance — enable at your own discretion. Click "Rescan now" below to apply.</UBFC_Set_LinkLimit_Tip>
+
+  <UBFC_Set_MaxDistance_Label>Fix too-small link distance</UBFC_Set_MaxDistance_Label>
+  <UBFC_Set_MaxDistance_Tip>On by default. Some furniture has its max link distance written as a value smaller than one cell (GloomyFurniture's teddy bear uses 0.9). Since the minimum spacing between cells is 1, such a value is mechanically identical to "must occupy the same cell as the bed", so placing it next to a bed can never link. When on, those distances are raised to 2 cells so an adjacent bed works.\nOnly facilities whose value falls inside (0, 1) are touched; any other distance is left alone. Click "Rescan now" below to apply.</UBFC_Set_MaxDistance_Tip>
+
+  <UBFC_Button_Rescan>Rescan now</UBFC_Button_Rescan>
+
+  <UBFC_Report_Title>Last scan result:</UBFC_Report_Title>
+
+  <!-- ═══════════ Scan report ═══════════ -->
+
+  <UBFC_Report_NotReady>The scan has not completed yet (defs may still be loading), so there is no data.</UBFC_Report_NotReady>
+  <UBFC_Report_Beds>· Beds detected: {0}</UBFC_Report_Beds>
+  <UBFC_Report_Facilities>· Bed facilities detected: {0}</UBFC_Report_Facilities>
+  <UBFC_Report_Injected>· Bed links added: {0}</UBFC_Report_Injected>
+  <UBFC_Report_Rebuilt>· Facility link tables rebuilt: {0}</UBFC_Report_Rebuilt>
+  <UBFC_Report_BedsWithoutComp>· Note: {0} further beds lack a CompAffectedByFacilities comp, so facilities cannot attach to them at all. That has to be fixed by the mod owning those beds.</UBFC_Report_BedsWithoutComp>
+  <UBFC_Report_ExtraBeds>· Of these, {0} are buildings that are not Building_Bed subclasses but are clearly beds, identified through their link tables</UBFC_Report_ExtraBeds>
+  <UBFC_Report_FacilityList>· Facility list: {0}</UBFC_Report_FacilityList>
+  <UBFC_Report_BedList>· Bed list: {0}</UBFC_Report_BedList>
+
+  <!-- ═══════════ Log ═══════════ -->
+
+  <UBFC_Log_EmptyDefDatabase>DefDatabase was empty, nothing was processed this time.</UBFC_Log_EmptyDefDatabase>
+  <UBFC_Log_InitFailed>An exception occurred during initialization. This mod did not take effect this time (the rest of the game is unaffected):</UBFC_Log_InitFailed>
+  <UBFC_Log_ScanDone>Scan complete: {0} beds, {1} bed facilities, {2} links added, {3} link tables rebuilt.</UBFC_Log_ScanDone>
+  <UBFC_Log_ExtraBeds>Additionally identified {0} buildings that are not Building_Bed subclasses but are clearly beds, and included them.</UBFC_Log_ExtraBeds>
+  <UBFC_Log_BedsWithoutComp>{0} Building_Bed defs have no CompProperties_AffectedByFacilities comp at all, so facilities cannot attach to them. The mods owning those beds need to add that comp; this mod cannot do it for them.</UBFC_Log_BedsWithoutComp>
+  <UBFC_Log_FuseApplied>Fuse applied: {0} gained {1} bed link targets (something rebuilt its link table at runtime).</UBFC_Log_FuseApplied>
+  <UBFC_Log_RelinkDone>Map {0} relinked: {1} facilities processed.</UBFC_Log_RelinkDone>
+  <UBFC_Log_RelinkAllDone>Manual rescan refreshed furniture links on {0} map(s) in {1} ms.</UBFC_Log_RelinkAllDone>
+  <UBFC_Log_RelinkFailed>An exception occurred while refreshing furniture links on the map. The link tables themselves were already updated and are in effect — newly built furniture is unaffected. Only furniture that was already built needs the map to be reloaded once:</UBFC_Log_RelinkFailed>
+  <UBFC_Log_MissingBedBaseline>Internal consistency warning: bed {0} has no baseline record, so its whitelist rebuild was skipped (original data kept untouched).</UBFC_Log_MissingBedBaseline>
+  <UBFC_Log_BootstrapFailed>An unexpected exception occurred during bootstrap. This mod did not take effect this time (the rest of the game is unaffected):</UBFC_Log_BootstrapFailed>
+  <UBFC_Log_IntactCheckFailed>Integrity self-check failed (skipping this pass; will retry on a later tick)</UBFC_Log_IntactCheckFailed>
+  <UBFC_Log_HarmonyFailed>Failed to apply the Harmony patch. Core functionality is unaffected — compatibility still works, you only lose the safety net that re-extends link tables if something resets them at runtime:</UBFC_Log_HarmonyFailed>
+  <UBFC_Log_MaxDistanceFixed>Distance fix: {0} had a max link distance of {1}, which is smaller than one cell and therefore can never link to a bed. Raised to {2}.</UBFC_Log_MaxDistanceFixed>
+  <UBFC_Log_TablesTampered>Another mod rebuilt the bed link tables late in startup. They were re-extended in place; functionality is unaffected.</UBFC_Log_TablesTampered>
+  <UBFC_Log_OverlappingDefs>Note: {0} def(s) are both a bed and bed furniture. Under vanilla rules they list themselves in their own link table and gain a buff from themselves; this mod now cuts that self-link. Their links to other buildings are unaffected.</UBFC_Log_OverlappingDefs>
+
+</LanguageData>

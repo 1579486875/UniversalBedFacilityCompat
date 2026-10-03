@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DefInjected path rule: DefInjected/<full name of the Def class>/<any file name>.xml
+  A Def class in a custom namespace must include that namespace, hence the folder
+  name UniversalBedFacilityCompat.CompatPolicyDef — RimWorld's
+  GenTypes.GetTypeInAnyAssembly resolves the type from this folder name.
+-->
+<LanguageData>
+
+  <UBFC_DefaultPolicy.label>bed facility compatibility policy</UBFC_DefaultPolicy.label>
+  <UBFC_DefaultPolicy.description>Exclusion lists controlling the automatic bed-facility linking. Both lists are empty by default, leaving everything to the automatic classification. Add a defName to an exclusion list if the automatic classification ever gets it wrong.</UBFC_DefaultPolicy.description>
+
+</LanguageData>

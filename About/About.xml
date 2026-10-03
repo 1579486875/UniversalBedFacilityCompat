@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>床铺增益建筑通用兼容</name>
+  <author>大赢经直插白皮赢道</author>
+  <packageId>gnh.cn.cys.universalbedfacilitycompat</packageId>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <modVersion>1.0.2</modVersion>
+  <modIconPath IgnoreIfNoMatchingField="True">UBFC/ModIcon</modIconPath>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077</steamWorkshopUrl>
+    </li>
+  </modDependencies>
+  <description>打通模组之间「床」与「床铺家具」的壁垒。
+让你的模组床能用上别的模组的衣柜，也让别的模组的衣柜能作用于你的模组床。
+
+【问题出在两个方向】
+① 模组添加的床，用不了其他模组的家具
+   这张床只认得它自己模组（或原版）的衣柜，别的模组衣柜摆在床边完全没反应。
+② 模组添加的家具，对别的床无效
+   这个衣柜只对原版那几张床有效，对模组添加的床一律装死。
+
+两种情况的根因是同一个：RimWorld 要求「床」和「家具」互相登记备案，
+而模组作者通常只登记了自己认识的那几个 —— 一跨界，连接就断了，而且游戏不会报任何错。
+
+【一个真实例子】
+[MUS]太空基地家具 的床，白名单里只有自家那几件家具和原版的速眠装置，
+原版的衣柜、床头柜摆在床边它毫无反应。本模组会把这份名录补全。
+
+【这个模组做什么】
+自动把两边的名录都补全，不需要任何设置：
+· 每一张床，都能用上所有兼容的床铺家具
+· 每一件床铺家具，都能作用于所有兼容的床
+· 不管它们来自原版、还是来自任何模组
+· 自动避开工作台工具柜、研究设备等「长得像但不是」的家具，绝不误伤
+
+【你会得到】
+· 旧存档直接可用：已经建好的家具会自动接上，不用拆掉重建
+· 新装的模组即时生效：不用等作者更新，不用找兼容补丁
+· 顺带修掉一些作者的笔误：比如把链接距离写成 0.9 格（小于一格，
+  机制上等于永远连不上），本模组会悄悄帮你修正
+· 随时可以卸载：不改动任何模组文件，存档不会残留垃圾
+
+【需要】
+Harmony（brrainz.harmony）
+
+【语言】
+简体中文 / 繁體中文 / English（跟随游戏语言自动切换）
+
+【说明】
+详细原理、设置项与「某个柜子还是不生效」的排查方法，见模组目录下的 README.md。</description>
+
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+</ModMetaData>
