@@ -22,7 +22,16 @@ namespace UniversalBedFacilityCompat
     /// 翻成白话：想知道「这个衣柜能给哪些床加成」，只能挨个去翻每张床手里的名单
     /// linkableFacilities（意思是「这张床欢迎哪些家具来影响我」），
     /// 谁的名单上写了这个衣柜，这个衣柜才算能作用于谁。
-    /// 也就是说 —— 这层关系完全由「床那一侧」单方面决定，家具这边一句话都说不上。
+    /// 也就是说 —— 「谁认谁」这份名录完全由「床那一侧」单方面决定，家具这边一句话都说不上。
+    ///
+    /// 【名词别搞混：「推导」和「建链」是两回事】
+    ///   · 推导（就是上面那段）：床侧名单 → 反推出设施侧名单，发生在 Def 加载期；
+    ///   · 建链（真正决定加成能不能吃到）：运行时由「设施那一侧」驱动 ——
+    ///     游戏遍历设施自己的 linkableBuildings，对每个候选调用 CanLinkTo 判定，
+    ///     通过才建立实际链接。床侧的 linkableFacilities 只服务于
+    ///     「放置时的预览连线」和「刚放下那一瞬间的自动连接」。
+    ///   所以本模组两手都要抓：既要把设施写进床侧名单（好推导出正确的设施侧名单），
+    ///   也要保证设施侧名单本身完整 —— 两者缺一，实际链接就会少掉一块。
     ///
     /// 麻烦正出在这儿：做家具的模组通常只把这件家具写进原版 Bed / DoubleBed 的名单里，
     /// 压根不认识别的模组新加的那些床。于是同一个衣柜，对原版床有效，
@@ -81,10 +90,29 @@ namespace UniversalBedFacilityCompat
         /// <summary>「认设施」和「认伪床」这两件事最多来回迭代几轮。实测两轮就已经稳定不变了，这里给足余量。</summary>
         private const int MaxClassifyPasses = 4;
 
+        /// <summary>详细报告里最多列出几个 defName，多出来的会折叠成「…(+N)」。</summary>
+        private const int ReportSampleLimit = 24;
+
+        /// <summary>
+        /// 报告文本的折行宽度（按字符数算，中英文一视同仁）。
+        /// 为什么要折行：设置面板的文字是用 Widgets.Label 画的，它<b>不会自动换行</b>，
+        /// 一行几百个字符会把整个面板的布局撑破，玩家反而看不到下面的开关和按钮。
+        /// </summary>
+        private const int ReportLineWrapWidth = 68;
+
         // ───────────────────────── 状态 ─────────────────────────
 
         /// <summary>初始化是否已经成功跑完。Harmony 那层保险丝、以及重新链接地图的逻辑，都看这个开关决定要不要开工。</summary>
         public static bool Ready { get; private set; }
+
+        /// <summary>
+        /// 「本模组初始化过几次」的世代号，每调用一次 Initialize() 就加一。
+        ///
+        /// 用途：CompatGameComponent 靠它判断玩家是不是点了设置界面里的「重新扫描」。
+        /// 一旦发现它变了，就把自检的「已检查过」「已试几次」一起清零 ——
+        /// 否则自检一旦试满 MaxIntactAttempts 次就永久停摆，玩家手动重扫也救不回来。
+        /// </summary>
+        internal static int InitializeGeneration { get; private set; }
 
         /// <summary>这一轮初始化有没有真的改动过链接名单。没改动就说明本来就一切正常，后续的重链也就不必白忙。</summary>
         public static bool LinkTableChanged { get; private set; }
@@ -275,6 +303,11 @@ namespace UniversalBedFacilityCompat
                     Log.Error("[UBFC] " + "UBFC_Log_RelinkFailed".Translate() + "\n" + ex);
                 }
             }
+
+            // 世代号 +1：告诉 CompatGameComponent「这是一轮新的扫描」。
+            // 它会据此把自检状态清零（见 InitializeGeneration 的说明），
+            // 这样玩家在设置界面点「重新扫描」之后，完整性自检还能重新跑起来。
+            InitializeGeneration++;
         }
 
         /// <summary>
@@ -1333,7 +1366,14 @@ namespace UniversalBedFacilityCompat
             for (int i = 0; i < bedDefs.Count; i++)
             {
                 ThingDef bed = bedDefs[i];
-                if (bed != null && AddIfMissing(props.linkableBuildings, bed))
+                // 与常规注入路径（InjectIntoLinkingSide）保持同一条规则：跳过「它自己」。
+                // 有些 Def 同时挂了床和设施两个组件，若把 parentDef 也写进它自己的
+                // linkableBuildings，这张床就会凭空多出一份自己提供的加成。
+                if (bed == null || ReferenceEquals(bed, parentDef))
+                {
+                    continue;
+                }
+                if (AddIfMissing(props.linkableBuildings, bed))
                 {
                     // 补进去一张，就记一笔，最后用来判断「这次到底有没有真的动过东西」。
                     added++;
@@ -1350,7 +1390,8 @@ namespace UniversalBedFacilityCompat
             for (int i = 0; i < bedDefs.Count; i++)
             {
                 ThingDef bed = bedDefs[i];
-                if (bed == null)
+                // 同样跳过「它自己」：parentDef 若既是设施又是床，不该把自己连到自己名下。
+                if (bed == null || ReferenceEquals(bed, parentDef))
                 {
                     continue;
                 }
@@ -1387,7 +1428,10 @@ namespace UniversalBedFacilityCompat
         /// Harmony 保险丝只能覆盖「ResolveReferences 又被调用了一次」这一条路径，
         /// 覆盖不了「直接给字段换一张新列表」这种做法。
         ///
-        /// 检查本身是纯只读的，开销大约是「床数 × 设施数」次哈希查找，一局游戏只跑一次；
+        /// 检查本身是纯只读的：床侧与设施侧各扫一遍，而每比对一张名单都要先把对面的
+        /// 完整名单倒进临时哈希集（见 ContainsAll），所以总开销约 2×(床数 × 设施数) 次哈希查找，
+        /// 另加每次重建临时集合的「名单长度之和」次插入。按 200 床 × 300 设施估算约十几万次
+        /// 哈希操作，且只在载入存档后的第一个 tick 跑一次，这个量级是可以接受的；
         /// 只有真的需要修的时候，才会重走一遍注入和重建 ——
         /// 那两个方法都可重复调用、且都是从基线重建的，所以再跑一次也不会出错。
         /// </summary>
@@ -1643,8 +1687,8 @@ namespace UniversalBedFacilityCompat
             if (verbose)
             {
                 // 开了详细日志才列清单，而且还只列前 24 个，免得报告长到看不完。
-                lines.Add("UBFC_Report_FacilityList".Translate(SampleDefNames(bedFacilityDefs, 24)).ToString());
-                lines.Add("UBFC_Report_BedList".Translate(SampleDefNames(bedDefs, 24)).ToString());
+                lines.Add("UBFC_Report_FacilityList".Translate(SampleDefNames(bedFacilityDefs, ReportSampleLimit)).ToString());
+                lines.Add("UBFC_Report_BedList".Translate(SampleDefNames(bedDefs, ReportSampleLimit)).ToString());
             }
 
             return string.Join("\n", lines);
@@ -1653,6 +1697,9 @@ namespace UniversalBedFacilityCompat
         /// <summary>
         /// 取前若干个 defName 拼成一行显示，多出来的部分折叠成「…(+N)」，
         /// 免得报告长得没边。
+        ///
+        /// 拼好之后还会按 <see cref="ReportLineWrapWidth"/> 折行 ——
+        /// 因为设置面板的 Label 不会自动换行，不折的话整块面板会被撑破。
         /// </summary>
         private static string SampleDefNames(List<ThingDef> defs, int max)
         {
@@ -1672,7 +1719,36 @@ namespace UniversalBedFacilityCompat
                 // 被截掉的部分用「…(+还剩多少)」提示一下，让玩家知道后面还有。
                 result.Add("…(+" + (defs.Count - count) + ")");
             }
-            return string.Join("、", result);
+            return WrapToWidth(string.Join("、", result), ReportLineWrapWidth);
+        }
+
+        /// <summary>
+        /// 把一段长文本按固定字符数折成多行。
+        ///
+        /// 为什么需要它：设置面板的文字是用 Widgets.Label 画的，而它<b>不会自动换行</b>，
+        /// 一行几百个字符会把整个面板的布局撑破，玩家反而看不到下面的开关和按钮。
+        /// 折行纯粹是为了好看，不改动任何数据。
+        /// </summary>
+        /// <param name="text">原始文本。</param>
+        /// <param name="width">每行最多放几个字符。</param>
+        private static string WrapToWidth(string text, int width)
+        {
+            if (string.IsNullOrEmpty(text) || width <= 0 || text.Length <= width)
+            {
+                // 短文本直接原样返回，不做无谓的搬运。
+                return text;
+            }
+
+            var sb = new System.Text.StringBuilder(text.Length + text.Length / width + 1);
+            for (int i = 0; i < text.Length; i += width)
+            {
+                if (i > 0)
+                {
+                    sb.Append('\n');
+                }
+                sb.Append(text, i, Math.Min(width, text.Length - i));
+            }
+            return sb.ToString();
         }
 
         /// <summary>

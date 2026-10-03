@@ -64,7 +64,13 @@ namespace UniversalBedFacilityCompat
             }
             catch (System.Exception ex)
             {
-                // 这里刻意让 patchesApplied 保持 false：下次构造 Mod 实例时还会再试一次。
+                // 失败之后照样把标志立起来，理由：
+                // PatchAll 是「一个补丁类一个补丁类地装」的，中途抛异常时，前面几个
+                // 很可能已经装上了。如果这里留着 false 让下次再 PatchAll 一次，
+                // 那几个已装上的补丁就会被叠上第二层 —— 正是历史上「越操作越卡」的成因。
+                // 两害相权取其轻：宁可这一局的保险丝没装上（核心功能完全不依赖 Harmony），
+                // 也绝不让补丁叠层把游戏拖垮。
+                patchesApplied = true;
                 Log.Warning("[UBFC] " + "UBFC_Log_HarmonyFailed".Translate() + "\n" + ex);
             }
         }

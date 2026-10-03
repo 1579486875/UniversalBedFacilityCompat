@@ -27,9 +27,11 @@ namespace UniversalBedFacilityCompat
     public class CompatGameComponent : GameComponent
     {
         /// <summary>本局游戏是否已经处理过重链。不写进存档，每次载入存档都会重新做一次。</summary>
+        [Unsaved]
         private bool relinkHandled;
 
         /// <summary>本局游戏是否已经跑过完整性自检。同样不写进存档。</summary>
+        [Unsaved]
         private bool intactChecked;
 
         /// <summary>
@@ -39,10 +41,20 @@ namespace UniversalBedFacilityCompat
         /// 但这个方法是每 tick 都会被调用的，要是失败原因一直存在，
         /// 就会变成「每 tick 重试一次」。所以必须设一个上限。
         /// </summary>
+        [Unsaved]
         private int intactAttempts;
 
         /// <summary>自检的重试上限。用完之后本局就不再尝试，免得每 tick 白跑一趟。</summary>
         private const int MaxIntactAttempts = 3;
+
+        /// <summary>
+        /// 上一次看到的引擎世代号（<see cref="CompatEngine.InitializeGeneration"/>）。
+        ///
+        /// 玩家在设置界面点「重新扫描」时，引擎会把世代号 +1。这里一旦发现对不上，
+        /// 就把「自检做过了没」「自检试过几次」一起清零，让自检重新获得重试机会。
+        /// 初始值故意设成 -1：第一局开始时必定与世代号（0）不同，于是自然走一遍初始化。
+        /// </summary>
+        private int seenInitializeGeneration = -1;
 
         /// <summary>Log.ErrorOnce 的去重键（取 'UBFC' 的十六进制，只需要在本模组内部唯一即可）。</summary>
         private const int IntactCheckErrorKey = 0x55424643;
@@ -67,6 +79,16 @@ namespace UniversalBedFacilityCompat
 
         public override void GameComponentTick()
         {
+            // 先看玩家有没有点过「重新扫描」。点过就意味着引擎重跑了一遍初始化，
+            // 此时自检的「已检查」「已试几次」都必须清零 —— 否则自检一旦试满上限，
+            // 就算数据后来被修好了，它也不会再自动跑。
+            if (seenInitializeGeneration != CompatEngine.InitializeGeneration)
+            {
+                seenInitializeGeneration = CompatEngine.InitializeGeneration;
+                intactChecked = false;
+                intactAttempts = 0;
+            }
+
             // 两件事都办完了就直接短路返回 —— 这是本组件在稳定状态下每 tick 的全部开销。
             if (intactChecked && relinkHandled)
             {
