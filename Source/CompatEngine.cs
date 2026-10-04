@@ -67,10 +67,18 @@ namespace UniversalBedFacilityCompat
     ///
     ///   「完整性自检」—— 由 CompatGameComponent 在第一个 tick 调用一次，见
     ///   <see cref="EnsureLinkTablesIntact"/>。它防的是这种局面：本模组跑完之后，
-    ///   又有别的模组把同一批名单整个重建了一遍。因为本模组的扫描挂在
-    ///   [StaticConstructorOnStartup] 上，而 StaticConstructorOnStartupUtility.CallAll()
-    ///   是严格按**模组加载顺序**一个一个调用静态构造函数的 —— 排在本模组后面的模组
+    ///   又有别的模组把同一批名单整个重建了一遍。因为带 [StaticConstructorOnStartup]
+    ///   的静态构造函数是由 StaticConstructorOnStartupUtility.CallAll() 挨个触发的，
+    ///   而那个顺序**不保证**与本模组的加载顺序一致 —— 在本模组之后被触发的模组，
     ///   完全可能把名单改成它自己认识的样子，把本模组刚做完的成果悄悄覆盖掉。
+    ///
+    ///   （关于这个顺序的确切情况，2026-10-04 用反编译核实过，以免后人照着错的印象改：
+    ///    CallAll 自身是**串行**的 foreach + RunClassConstructor，每个类型各有 try/catch；
+    ///    真正「不保证」的是它拿到的那份类型列表 ——
+    ///    GenTypes.AllTypesWithAttribute 里写的是 AsParallel().Where(...).ToList()，
+    ///    用 PLINQ 做筛选。PLINQ 的 ToList 会保留源顺序，所以最终顺序
+    ///    = GenTypes.AllTypes 的顺序 ≈ 程序集加载顺序，**与模组列表顺序并不等同**。
+    ///    本文件与 CompatGameComponent 里早先对此的描述互相矛盾，现统一以这一段为准。）
     ///
     /// 全程不写死任何具体 DefName（不针对某个模组硬编码），
     /// 也不挂在 Tick / Update / 渲染这些每帧都要跑的路径上。
@@ -89,6 +97,20 @@ namespace UniversalBedFacilityCompat
 
         /// <summary>「认设施」和「认伪床」这两件事最多来回迭代几轮。实测两轮就已经稳定不变了，这里给足余量。</summary>
         private const int MaxClassifyPasses = 4;
+
+        /// <summary>
+        /// 保险丝（<see cref="OnFacilityResolveReferences"/>）出错时的日志去重键。
+        /// 必须与 CompatGameComponent 里那几个键取值不同 —— Log.ErrorOnce 是按 key 去重的，
+        /// 两个不同来源共用同一个 key，后来的那条会被悄悄吃掉。
+        /// </summary>
+        private const int FuseFailedErrorKey = 0x55424645;
+
+        /// <summary>
+        /// 「玩家手动重扫时某张地图重链失败」的日志去重键。
+        /// 与进游戏时那次重链（CompatGameComponent 的 0x55424644）分开，
+        /// 让两条路径各自都能报出第一条错误。
+        /// </summary>
+        private const int RelinkMapErrorKey = 0x55424646;
 
         /// <summary>
         /// 详细报告里最多列出几个 defName，多出来的会折叠成「…(+N)」。
@@ -235,6 +257,40 @@ namespace UniversalBedFacilityCompat
         /// 是为了让第一个 tick 那次检查不额外地产生垃圾对象。
         /// </summary>
         private static readonly HashSet<ThingDef> intactCheckScratch = new HashSet<ThingDef>();
+
+        /// <summary>
+        /// 保险丝路径（OnFacilityResolveReferences）里用来判断
+        /// 「这一项是不是已经在名单里」的临时集合。
+        ///
+        /// 为什么不直接用 List.Contains：那条路径的外层循环里，
+        /// 名单会一路增长到「全部床 Def」，于是每次查找都是 O(床Def数)，
+        /// 整体退化成 O(床Def数²)；而整个方法还会被**每一件床用设施各调用一次**。
+        /// HashSet 把每次查找降到 O(1)。
+        ///
+        /// ⚠ 为什么「降成 O(1) 之后语义仍然完全不变」——理由比看上去绕，别记错：
+        ///
+        /// 早先这里写的是「ThingDef 没有重写 Equals，所以两者都是引用比较」，
+        /// **这个理由是错的**（2026-10-04 复审查出）。实际情况是：
+        ///   · Verse.Def **实现了 IEquatable&lt;Def&gt;**，
+        ///   · 也**重写了 GetHashCode()**（返回 defNameHash）；
+        ///   · 但 ThingDef **没有实现 IEquatable&lt;ThingDef&gt;**。
+        ///
+        /// 而 IEquatable&lt;T&gt; 是**不协变**的，所以
+        /// EqualityComparer&lt;ThingDef&gt;.Default 判定「ThingDef 是否可当作
+        /// IEquatable&lt;ThingDef&gt;」得到的答案是**否**，于是它退化成
+        /// ObjectEqualityComparer —— 走 object.Equals(object)，也就是**引用比较**。
+        /// List&lt;ThingDef&gt;.Contains 走的是同一条 EqualityComparer&lt;T&gt;.Default 路径，
+        /// 所以两者严格同义。等价性成立，只是原因不同。
+        ///
+        /// 记这一条的实际意义：这个等价性**依赖泛型参数恰好是 ThingDef**。
+        /// 哪天有人把这里改成 HashSet&lt;Def&gt; 或 List&lt;Def&gt;，
+        /// 判等方式会**当场**变成「defNameHash + GetType 判等」，
+        /// 而那种变化不会有任何编译错误、也不会有运行时报错，只会静悄悄地改变行为。
+        ///
+        /// 复用同一个实例，是为了避免每次调用都分配一个新集合。
+        /// 它只在单次调用内使用、用完即清（见 Core 里的用法），不跨调用保留任何数据。
+        /// </summary>
+        private static readonly HashSet<ThingDef> fuseScratch = new HashSet<ThingDef>();
 
         /// <summary>
         /// 以前有没有初始化过至少一次。用来分清「游戏启动时的第一次扫描」
@@ -1436,6 +1492,31 @@ namespace UniversalBedFacilityCompat
         /// </summary>
         internal static void OnFacilityResolveReferences(CompProperties_Facility props, ThingDef parentDef)
         {
+            // 这层 try/catch 是 2026-10-04 审计后补上的，必须有：
+            //
+            // 本方法是挂在 ThingDef.ResolveReferences 内部那个 comps 循环上的 postfix。
+            // 一旦把异常抛出去，**同一个 ThingDef 上排在后面的其它 CompProperties
+            // 就再也不会被 ResolveReferences** —— 而那些是别的模组的初始化代码。
+            // 也就是说：本模组自己出的小事，会变成别人的大事。
+            //
+            // 保险丝本来就是「锦上添花」，失败只该记一条日志、安静跳过。
+            // 用 ErrorOnce 而不是 Error：它会被每一件床用设施各调用一次，普通 Error 会刷屏。
+            try
+            {
+                OnFacilityResolveReferencesCore(props, parentDef);
+            }
+            catch (Exception ex)
+            {
+                Log.ErrorOnce("[UBFC] " + "UBFC_Log_FuseFailed".Translate() + "\n" + ex, FuseFailedErrorKey);
+            }
+        }
+
+        /// <summary>
+        /// 保险丝的实际逻辑。外面那层 <see cref="OnFacilityResolveReferences"/> 只负责
+        /// 兜住异常，本方法体与它原本的内容完全一致。
+        /// </summary>
+        private static void OnFacilityResolveReferencesCore(CompProperties_Facility props, ThingDef parentDef)
+        {
             if (!Ready || props == null || parentDef == null || !bedFacilitySet.Contains(parentDef))
             {
                 // 引擎还没就绪、参数不合法、或者这件设施压根不在我们的床用设施名单里，
@@ -1449,6 +1530,36 @@ namespace UniversalBedFacilityCompat
                 props.linkableBuildings = new List<ThingDef>();
             }
 
+            // 下面这一段用 HashSet 判断「这一项是不是已经在名单里」，而不是
+            // 每次都去 List.Contains。
+            //
+            // 为什么要这么改（2026-10-04 审计）：这一段是嵌套的 ——
+            // 外层遍历全部床 Def，内层每次都要在这份不断变长的名单里找一遍，
+            // 所以是 O(床Def数²)；而整个方法**每一件床用设施都会各调用一次**。
+            //
+            // 需要说清楚它**什么时候才会真的跑**（这一点早先的注释写错了、已更正）：
+            // 本方法是挂在 ThingDef.ResolveReferences 上的保险丝，而那个阶段
+            // 早于 StaticConstructorOnStartupUtility.CallAll，此时 Ready 还是 false，
+            // 所以**正常启动路径上它一次都不会执行**（首行就早退了）。
+            // 真正会跑到这里的，是「运行期热重载 Def」（开发者工具）那类场景。
+            // 也就是说：这是热重载时的一次性开销，**不是启动开销**，
+            // 早先写成「启动卡十几秒」是夸大，实际启动根本走不到这里。
+            //
+            // 之所以仍然要改：床 Def 上千的重度整合包会把它放大到十几亿次比较。
+            // 换成 HashSet 之后内层查找变成 O(1)，**语义完全不变**：
+            // ThingDef 没有实现 IEquatable<ThingDef>，所以
+            // HashSet 与 List.Contains 走的都是引用比较（已用反编译核实），
+            // 补入顺序也仍按 bedDefs 的原有次序。
+            fuseScratch.Clear();
+            for (int i = 0; i < props.linkableBuildings.Count; i++)
+            {
+                ThingDef already = props.linkableBuildings[i];
+                if (already != null)
+                {
+                    fuseScratch.Add(already);
+                }
+            }
+
             int added = 0;
             for (int i = 0; i < bedDefs.Count; i++)
             {
@@ -1460,8 +1571,11 @@ namespace UniversalBedFacilityCompat
                 {
                     continue;
                 }
-                if (AddIfMissing(props.linkableBuildings, bed))
+                // HashSet.Add 返回 false 就表示「原本就在里面」，
+                // 正好顶上原来 AddIfMissing 内部那次 Contains。
+                if (fuseScratch.Add(bed))
                 {
+                    props.linkableBuildings.Add(bed);
                     // 补进去一张，就记一笔，最后用来判断「这次到底有没有真的动过东西」。
                     added++;
                 }
@@ -1484,9 +1598,30 @@ namespace UniversalBedFacilityCompat
                 }
                 CompProperties_AffectedByFacilities affected =
                     bed.GetCompProperties<CompProperties_AffectedByFacilities>();
-                if (affected?.linkableFacilities != null
-                    && AddIfMissing(affected.linkableFacilities, parentDef))
+                List<ThingDef> bedList = affected?.linkableFacilities;
+                if (bedList == null)
                 {
+                    continue;
+                }
+
+                // 这里**故意不用** fuseScratch，改成直接线性扫一遍。
+                //
+                // 理由（2026-10-04 复审）：建一个哈希集和扫一遍列表**都是 O(名单长度)**，
+                // 成本一模一样；但线性扫描不碰那个共享的静态集合，
+                // 就少了一份「谁在什么时候把它 Clear 掉了」的隐患。
+                // 床侧名单的长度 = 这台设施原本登记过的床数，通常很小，扫一遍根本不值一提。
+                bool alreadyLinked = false;
+                for (int k = 0; k < bedList.Count; k++)
+                {
+                    if (ReferenceEquals(bedList[k], parentDef))
+                    {
+                        alreadyLinked = true;
+                        break;
+                    }
+                }
+                if (!alreadyLinked)
+                {
+                    bedList.Add(parentDef);
                     restored++;
                 }
             }
@@ -1576,7 +1711,10 @@ namespace UniversalBedFacilityCompat
                     return false;
                 }
 
-                if (!ContainsAll(list, bedFacilityDefs))
+                // 第三个参数是「这张床自己」：万一它同时也是床用设施，
+                // 注入侧会把「自己连自己」那条切掉，自检也得同样放过它，
+                // 否则这里永远判定「名单不完整」。
+                if (!ContainsAll(list, bedFacilityDefs, bedDefs[i]))
                 {
                     return false;
                 }
@@ -1601,7 +1739,9 @@ namespace UniversalBedFacilityCompat
                     return false;
                 }
 
-                if (!ContainsAll(list, bedDefs))
+                // 同上：这件设施自己也可能同时是床，自连那一条是被我们主动切掉的，
+                // 所以自检要放过它。
+                if (!ContainsAll(list, bedDefs, bedFacilityDefs[i]))
                 {
                     return false;
                 }
@@ -1613,7 +1753,24 @@ namespace UniversalBedFacilityCompat
         /// 检查 needles 里的每一样东西是不是都在 haystack 里。
         /// 先把 haystack 装进一个静态临时集合，这样内层的查询就从「挨个找」变成了「一次查到」。
         /// </summary>
-        private static bool ContainsAll(List<ThingDef> haystack, List<ThingDef> needles)
+        /// <param name="haystack">要检查的那份名单（某件设施的 linkableBuildings，或某张床的 linkableFacilities）。</param>
+        /// <param name="needles">名单里**应该**有的全部对象。</param>
+        /// <param name="self">
+        /// 「既是床、又是床用设施」的那个 Def（没有就传 null）。
+        ///
+        /// 为什么必须把它传进来（2026-10-04 复审查出的逻辑缺陷）：
+        /// 本模组在注入侧与重建侧**主动切断**了「自己连自己」那一条
+        ///（见 InjectIntoLinkingSide 与 RebuildFacilityLinkTables 里的 ReferenceEquals 判断），
+        /// 理由是原版规则会让这种 Def 给自己凭空加一份属性。
+        /// 但下面这个自检原本是「一种设施都不能少」—— 那个被我们**故意**摘掉的自己
+        /// 当然永远查不到，于是必然返回 false，完整性自检就永远认定「名单不完整」。
+        ///
+        /// 后果不是功能坏掉，而是每次读档都白跑一次全量重注入 + 全地图重链，
+        /// 还会打出一条 UBFC_Log_TablesTampered —— 把本模组自己的设计
+        /// 说成「别的模组把链接表重建了」，把排查的人往完全错误的方向带。
+        /// 所以这里显式跳过 self：只对它一个人网开一面，别的一概照旧。
+        /// </param>
+        private static bool ContainsAll(List<ThingDef> haystack, List<ThingDef> needles, ThingDef self)
         {
             // 下面这段是「把 haystack 倒进临时集合」，用完即清，
             // 所以这个静态集合可以反复借来用，不会串味。
@@ -1628,6 +1785,12 @@ namespace UniversalBedFacilityCompat
 
             for (int i = 0; i < needles.Count; i++)
             {
+                // 唯独放过「它自己」：那一条是本模组主动切断的，不是丢失。
+                if (self != null && ReferenceEquals(needles[i], self))
+                {
+                    continue;
+                }
+
                 if (!intactCheckScratch.Contains(needles[i]))
                 {
                     return false;
@@ -1658,15 +1821,34 @@ namespace UniversalBedFacilityCompat
 
             // 计个时，详细日志里会报告「刷完所有地图花了多少毫秒」。
             var watch = Stopwatch.StartNew();
+
+            // 每张地图单独包一层 try/catch（2026-10-04 审计补上）。
+            //
+            // 为什么不直接写一个 for 循环：玩家可能同时有多张地图
+            //（主地图 + 商队/飞船地图 + 已生成的定居点）。第 0 张地图上只要有一件设施
+            // 抛异常（比如别的模组覆写过 CanLinkTo 的建筑），整个循环就会中断 ——
+            // 其余地图上的家具保持旧状态，而玩家看到的现象是「点了重新扫描没反应」。
+            // CompatGameComponent 里进游戏时那次重链本来就是每张图各包一层，这里与它对齐。
+            int relinkedMaps = 0;
             for (int i = 0; i < maps.Count; i++)
             {
-                RelinkMap(maps[i]);
+                try
+                {
+                    RelinkMap(maps[i]);
+                    relinkedMaps++;
+                }
+                catch (Exception ex)
+                {
+                    Log.ErrorOnce("[UBFC] " + "UBFC_Log_RelinkFailed".Translate() + " (map index " + i + ")\n" + ex,
+                        RelinkMapErrorKey);
+                }
             }
             watch.Stop();
 
             if (Settings?.verboseLogging ?? false)
             {
-                Log.Message("[UBFC] " + "UBFC_Log_RelinkAllDone".Translate(maps.Count, watch.ElapsedMilliseconds));
+                // 报「成功重链了几张」而不是「总共有几张」—— 中途失败时数字才说实话。
+                Log.Message("[UBFC] " + "UBFC_Log_RelinkAllDone".Translate(relinkedMaps, watch.ElapsedMilliseconds));
             }
         }
 
@@ -1875,19 +2057,5 @@ namespace UniversalBedFacilityCompat
             }
         }
 
-        /// <summary>
-        /// 往列表里追加一项，但如果列表里本来就有它，就什么都不做。
-        /// 做成静态方法而不是扩展方法，是为了避免和其它模组的扩展方法撞名、产生歧义。
-        /// 返回值：true 表示「原来没有，这次真的加进去了」。
-        /// </summary>
-        internal static bool AddIfMissing<T>(List<T> list, T item) where T : class
-        {
-            if (list == null || item == null || list.Contains(item))
-            {
-                return false;
-            }
-            list.Add(item);
-            return true;
-        }
     }
 }

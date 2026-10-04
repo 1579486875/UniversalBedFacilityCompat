@@ -10,11 +10,15 @@ namespace UniversalBedFacilityCompat
     /// 1. 完整性自检（每局只做一次）
     ///    Def 数据是 CompatBootstrap 在 [StaticConstructorOnStartup] 里改好的，
     ///    而 StaticConstructorOnStartupUtility.CallAll() 会把所有带该特性的静态构造函数
-    ///    挨个跑一遍 —— 但执行顺序不保证（内部用 PLINQ 并行筛选），
-    ///    任何其它模组都可能在本模组之后把同一批名单整个重建一遍，
+    ///    挨个跑一遍 —— 它自身是串行的（foreach + RunClassConstructor，每类型各有 try/catch），
+    ///    但它拿到的那份类型列表顺序不保证与模组加载顺序一致
+    ///    （GenTypes.AllTypesWithAttribute 里用 AsParallel().Where(...).ToList() 做筛选；
+    ///      PLINQ 的 ToList 保序，所以顺序 ≈ 程序集加载顺序，与模组列表顺序并不等同），
+    ///    因此任何其它模组都可能在本模组之后把同一批名单整个重建一遍，
     ///    本模组刚写进去的东西就会被覆盖掉。
     ///    所以这里在游戏跑起来的第一个 tick 检查一次，发现问题当场修好，
     ///    详见 <see cref="CompatEngine.EnsureLinkTablesIntact"/>。
+    ///    （本段与 CompatEngine.cs 里对同一件事的描述早先互相矛盾，现已统一。）
     ///
     /// 2. 重新链接地图上已有的家具（每次载入存档后做一次）
     ///    链接关系不写在存档里，而是建筑被放下去（SpawnSetup / PostMapInit）时当场建立的。

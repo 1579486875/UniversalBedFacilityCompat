@@ -53,4 +53,6 @@
   <UBFC_Log_TablesTampered>啟動後期偵測到床鋪連結表被其它模組重建，已就地重新注入。功能不受影響。</UBFC_Log_TablesTampered>
   <UBFC_Log_OverlappingDefs>注意：有 {0} 個 Def 既是床、又是床鋪家具。按原版規則它們會把自己寫進自己的連結表、憑空給自己一份加成；本模組已主動切斷這條「自己連自己」的記錄，它們與其它建築的連結不受影響。</UBFC_Log_OverlappingDefs>
 
+  <UBFC_Log_FuseFailed>保險絲補齊失敗（本次跳過，不影響其它模組的 Def 初始化）：</UBFC_Log_FuseFailed>
+
 </LanguageData>

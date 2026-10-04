@@ -53,4 +53,6 @@
   <UBFC_Log_TablesTampered>Another mod rebuilt the bed link tables late in startup. They were re-extended in place; functionality is unaffected.</UBFC_Log_TablesTampered>
   <UBFC_Log_OverlappingDefs>Note: {0} def(s) are both a bed and bed furniture. Under vanilla rules they list themselves in their own link table and gain a buff from themselves; this mod now cuts that self-link. Their links to other buildings are unaffected.</UBFC_Log_OverlappingDefs>
 
+  <UBFC_Log_FuseFailed>Fuse top-up failed (skipped this time; other mods' Def initialization is unaffected):</UBFC_Log_FuseFailed>
+
 </LanguageData>
