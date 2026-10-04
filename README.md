@@ -1,4 +1,4 @@
-# 床铺增益建筑通用兼容
+# 床铺增益建筑通用兼容补丁
 
 > **📦 下载**：[最新版本（Release）](https://github.com/1579486875/UniversalBedFacilityCompat/releases/latest) —— 下载 zip，解压后把整个文件夹放进 RimWorld 的 `Mods\` 目录即可（需要 Harmony）。
 
