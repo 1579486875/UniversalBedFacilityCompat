@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 
   <!-- ═══════════ 设置界面 ═══════════ -->
@@ -28,8 +28,8 @@
   <UBFC_Report_Beds>· 识别到床：{0} 张</UBFC_Report_Beds>
   <UBFC_Report_Facilities>· 识别到床用设施：{0} 个</UBFC_Report_Facilities>
   <UBFC_Report_Injected>· 新增床铺链接：{0} 条</UBFC_Report_Injected>
-  <UBFC_Report_Rebuilt>· 重建设施链接表：{0} 份</UBFC_Report_Rebuilt>
-  <UBFC_Report_BedsWithoutComp>· 注意：另有 {0} 张床缺少 CompAffectedByFacilities 组件，设施无法附着，需由床所属的模组补上。</UBFC_Report_BedsWithoutComp>
+  <UBFC_Report_Rebuilt>· 重建链接表：{0} 份（含所有带设施组件的 Def，通常多于床用设施数）</UBFC_Report_Rebuilt>
+  <UBFC_Report_BedsWithoutComp>· 注意：另有 {0} 种床缺少 CompAffectedByFacilities 组件，设施无法附着，需由床所属的模组补上。</UBFC_Report_BedsWithoutComp>
   <UBFC_Report_ExtraBeds>· 其中通过链接表额外识别出 {0} 个非 Building_Bed 类但显然属于床的建筑</UBFC_Report_ExtraBeds>
   <UBFC_Report_FacilityList>· 设施清单：{0}</UBFC_Report_FacilityList>
   <UBFC_Report_BedList>· 床清单：{0}</UBFC_Report_BedList>

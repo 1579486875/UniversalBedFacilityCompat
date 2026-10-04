@@ -9,8 +9,10 @@ namespace UniversalBedFacilityCompat
     ///
     /// 1. 完整性自检（每局只做一次）
     ///    Def 数据是 CompatBootstrap 在 [StaticConstructorOnStartup] 里改好的，
-    ///    而静态构造函数是按模组加载顺序挨个调用的 —— 排在本模组后面的模组，
-    ///    如果也把同一批名单整个重建了一遍，本模组刚写进去的东西就会被覆盖掉。
+    ///    而 StaticConstructorOnStartupUtility.CallAll() 会把所有带该特性的静态构造函数
+    ///    挨个跑一遍 —— 但执行顺序不保证（内部用 PLINQ 并行筛选），
+    ///    任何其它模组都可能在本模组之后把同一批名单整个重建一遍，
+    ///    本模组刚写进去的东西就会被覆盖掉。
     ///    所以这里在游戏跑起来的第一个 tick 检查一次，发现问题当场修好，
     ///    详见 <see cref="CompatEngine.EnsureLinkTablesIntact"/>。
     ///
@@ -20,17 +22,26 @@ namespace UniversalBedFacilityCompat
     ///    或者某些模组的动态 Def 处理把已有的链接搅乱了，就得主动触发一次重链。
     ///
     /// 开销：这两件事在正常情况下各只做一次（自检遇到异常会重试，但最多 MaxIntactAttempts 次），
-    ///       之后每 tick 就只剩两次 bool 判断，几乎不花钱。
+    ///       之后每 tick 就只剩「一次世代号比较 + 两次 bool 判断」，几乎不花钱。
     ///       一个例外：玩家把「进入地图时自动重新链接」关掉时，重链那件事会一直留着机会
     ///       （他随时可能重新打开），此时每 tick 会多读一两个字段，开销同样可以忽略。
     /// </summary>
     public class CompatGameComponent : GameComponent
     {
-        /// <summary>本局游戏是否已经处理过重链。不写进存档，每次载入存档都会重新做一次。</summary>
+        /// <summary>
+        /// 本局游戏是否已经处理过重链。
+        ///
+        /// 关于 [Unsaved]：GameComponent 基类的 ExposeData() 是空方法体、本类也没有覆写它，
+        /// 所以这几个字段本来就不会进存档，标 [Unsaved] 只是「明示意图」——
+        /// 防止将来有人加了 ExposeData() 却忘了排除它们（它另一个实际作用是让
+        /// XML 注入 / DefInjected 翻译跳过这些字段）。
+        /// 另外每次进游戏（新开局或读档）游戏都会重新构造一个组件，这些值必然是初始值，
+        /// 所以「每次载入存档后重新做一次」是自动成立的，不需要存档里记着什么。
+        /// </summary>
         [Unsaved]
         private bool relinkHandled;
 
-        /// <summary>本局游戏是否已经跑过完整性自检。同样不写进存档。</summary>
+        /// <summary>本局游戏是否已经跑过完整性自检。刷新时机同 relinkHandled，见上面的说明。</summary>
         [Unsaved]
         private bool intactChecked;
 
@@ -40,6 +51,7 @@ namespace UniversalBedFacilityCompat
         /// 自检失败时故意不把 intactChecked 置位，是为了保住下次重试的机会；
         /// 但这个方法是每 tick 都会被调用的，要是失败原因一直存在，
         /// 就会变成「每 tick 重试一次」。所以必须设一个上限。
+        /// （同样不需要进存档：每次进游戏都会重新构造组件，试次数自然从 0 开始。）
         /// </summary>
         [Unsaved]
         private int intactAttempts;
@@ -53,6 +65,10 @@ namespace UniversalBedFacilityCompat
         /// 玩家在设置界面点「重新扫描」时，引擎会把世代号 +1。这里一旦发现对不上，
         /// 就把「自检做过了没」「自检试过几次」一起清零，让自检重新获得重试机会。
         /// 初始值故意设成 -1：第一局开始时必定与世代号（0）不同，于是自然走一遍初始化。
+        ///
+        /// 注意：设置窗口打开时游戏是暂停的（Dialog_ModSettings.forcePause = true），
+        /// GameComponentTick 不会跑 —— 所以清零实际发生在「关窗并解除暂停后的第一个 tick」，
+        /// 不是点一下立刻生效。好在 Initialize() 自己已经同步重链过，功能不受影响。
         /// </summary>
         private int seenInitializeGeneration = -1;
 
@@ -124,7 +140,14 @@ namespace UniversalBedFacilityCompat
                 {
                     try
                     {
-                        CompatEngine.EnsureLinkTablesIntact();
+                        if (CompatEngine.EnsureLinkTablesIntact())
+                        {
+                            // 自检这一次**真的改动了**链接名单 —— 那么地图上早就建好的
+                            // 那些家具就得重链一遍，改动才会生效（否则只对新放下的家具有效）。
+                            // 把重链标志放回去：它可能在本局更早的时候就已经被置位了
+                            // （比如首 tick 自检失败、而当时名单并没有被改动过）。
+                            relinkHandled = false;
+                        }
                         intactChecked = true;
                     }
                     catch (System.Exception ex)

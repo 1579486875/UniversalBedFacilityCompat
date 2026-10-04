@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 
   <!-- ═══════════ 設定介面 ═══════════ -->
@@ -28,8 +28,8 @@
   <UBFC_Report_Beds>· 辨識到床：{0} 張</UBFC_Report_Beds>
   <UBFC_Report_Facilities>· 辨識到床用設施：{0} 個</UBFC_Report_Facilities>
   <UBFC_Report_Injected>· 新增床鋪連結：{0} 條</UBFC_Report_Injected>
-  <UBFC_Report_Rebuilt>· 重建設施連結表：{0} 份</UBFC_Report_Rebuilt>
-  <UBFC_Report_BedsWithoutComp>· 注意：另有 {0} 張床缺少 CompAffectedByFacilities 組件，設施無法附著，需由床所屬的模組補上。</UBFC_Report_BedsWithoutComp>
+  <UBFC_Report_Rebuilt>· 重建連結表：{0} 份（含所有帶設施組件的 Def，通常多於床用設施數）</UBFC_Report_Rebuilt>
+  <UBFC_Report_BedsWithoutComp>· 注意：另有 {0} 種床缺少 CompAffectedByFacilities 組件，設施無法附著，需由床所屬的模組補上。</UBFC_Report_BedsWithoutComp>
   <UBFC_Report_ExtraBeds>· 其中透過連結表額外辨識出 {0} 個非 Building_Bed 類但顯然屬於床的建築</UBFC_Report_ExtraBeds>
   <UBFC_Report_FacilityList>· 設施清單：{0}</UBFC_Report_FacilityList>
   <UBFC_Report_BedList>· 床清單：{0}</UBFC_Report_BedList>

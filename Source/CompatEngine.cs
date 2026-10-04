@@ -90,13 +90,19 @@ namespace UniversalBedFacilityCompat
         /// <summary>「认设施」和「认伪床」这两件事最多来回迭代几轮。实测两轮就已经稳定不变了，这里给足余量。</summary>
         private const int MaxClassifyPasses = 4;
 
-        /// <summary>详细报告里最多列出几个 defName，多出来的会折叠成「…(+N)」。</summary>
-        private const int ReportSampleLimit = 24;
+        /// <summary>
+        /// 详细报告里最多列出几个 defName，多出来的会折叠成「…(+N)」。
+        ///
+        /// 这个数不宜大：设置窗口是固定尺寸、既不能缩放也没有滚动条，
+        /// 列太多会被直接裁掉，反而一整段都看不到。8 个足够确认「它认出了哪些」。
+        /// </summary>
+        private const int ReportSampleLimit = 8;
 
         /// <summary>
         /// 报告文本的折行宽度（按字符数算，中英文一视同仁）。
-        /// 为什么要折行：设置面板的文字是用 Widgets.Label 画的，它<b>不会自动换行</b>，
-        /// 一行几百个字符会把整个面板的布局撑破，玩家反而看不到下面的开关和按钮。
+        /// 为什么要折行：报告里的 defName 清单是用「、」连起来的、中间没有空格，
+        /// 按词折行的机制对它并不可靠；而设置窗口固定尺寸、既不能缩放也没有滚动条，
+        /// 一行太长会被直接裁掉，反而整段都看不见。这里按字符数主动折行更稳。
         /// </summary>
         private const int ReportLineWrapWidth = 68;
 
@@ -199,10 +205,29 @@ namespace UniversalBedFacilityCompat
         /// （原版 CanLinkTo 本来就不禁止自己连自己），但本模组让
         /// 「每张床的白名单都包含全部床用设施」成了必然结果，
         /// 于是这种情况就从「理论上可能」变成了「一定会发生」。
-        /// 这里统计出来，只是为了让它在详细日志里能被看见，不做任何特殊处理 ——
-        /// 真要去掐掉它，就会连「同一种家具之间互相加成」也一起掐掉了。
+        /// 这里统计出来是为了让它在详细日志里能被看见；而**自己连自己**那一条
+        /// 已经在注入与还原两处被主动切断了（见 InjectIntoLinkingSide 与
+        /// OnFacilityResolveReferences 里的自连跳过）。
+        /// 注意只切「自己 → 自己」这一条：同一种家具之间互相加成是原版语义，那个不能动。
+        /// </summary>
+        /// <summary>
+        /// 下面这些静态集合（基线表、并集名单、各种缓存）**只在 Unity 主线程被访问**，
+        /// 所以刻意没有加锁。这不是疏忽，而是 RimWorld 的运行约定：
+        ///   ·Initialize() 由 [StaticConstructorOnStartup] 触发，在 DoPlayLoad 的主线程上跑；
+        ///   ·CompatGameComponent 的 tick、设置窗口的绘制，同样都在主线程；
+        ///   ·本模组挂的保险丝在 CompProperties_Facility.ResolveReferences 上
+        ///     （它是 ThingDef.ResolveReferences 串行往下调的一环），而那条路径是
+        ///     parallel:false 的（真并行的是 ThingCategoryDef / RecipeDef，它们不经过本补丁）。
+        /// 如果将来要把这些逻辑挪到后台线程，必须先把这些集合全部加锁 —— 否则 List / Dictionary
+        /// 在并发写时会静默丢数据或抛异常。
         /// </summary>
         private static int overlappingDefCount;
+
+        /// <summary>「Def 数据库为空」只报一次，免得连点重扫时刷屏。</summary>
+        private static bool emptyDatabaseLogged;
+
+        /// <summary>「链接表被篡改」只报一次，理由同上。</summary>
+        private static bool tablesTamperedLogged;
 
         /// <summary>
         /// 完整性自检时临时借用一下的集合（见 <see cref="EnsureLinkTablesIntact"/>）。
@@ -221,6 +246,20 @@ namespace UniversalBedFacilityCompat
         /// <summary>设置界面报告的缓存文本（连缓存时详细日志开关的状态一起记着），免得设置窗口每帧都重新拼一遍字符串。</summary>
         private static string reportCache;
         private static bool reportCacheVerbose;
+
+        /// <summary>
+        /// 一个共享的空名单，只在比较的时候充当「什么都没有」的基线（配合 ?? 给可能为 null 的基线兜底）。
+        ///
+        /// 为什么需要它：基线快照是允许存 null 的（原版 XML 没写 linkableFacilities / linkableBuildings
+        /// 时就是 null），而 SameSequence 遇到 null 一律判「不一样」。于是「基线还没建立（null）、
+        /// 当前也确实是空表」这种其实没变化的组合，会被当成「和现在不一样」，
+        /// 每次重扫都白置一次 LinkTableChanged、多触发一次全地图重链。
+        /// 语义上 null 与空表在「有没有东西要连」这件事上完全等价，归一化不会改变任何实际行为。
+        ///
+        /// ⚠️ 这个对象是只读共享的：绝不能往里 Add，也绝不能把它赋给任何真正的链接名单
+        ///（否则同一个对象被多处共用，一处 Clear 就会把别处一起清空）。
+        /// </summary>
+        private static readonly List<ThingDef> EmptyDefList = new List<ThingDef>();
 
         /// <summary>一件设施的扫描记录：它是哪个 Def、它的组件配置在哪、以及它动手前的原始样子。</summary>
         private sealed class FacilityRecord
@@ -256,7 +295,13 @@ namespace UniversalBedFacilityCompat
                 {
                     // Def 列表是空的，说明游戏还没把数据读完（正常情况下不会发生）。
                     // 这时候什么都做不了，只能记一条警告然后收工。
-                    Log.Warning("[UBFC] " + "UBFC_Log_EmptyDefDatabase".Translate());
+                    // 只报一次：「立即重新扫描」按钮会反复触发本方法，
+            // 而「Def 数据库为空」不会因为多等一会儿就变好，重复报只是刷屏。
+            if (!emptyDatabaseLogged)
+            {
+                emptyDatabaseLogged = true;
+                Log.Warning("[UBFC] " + "UBFC_Log_EmptyDefDatabase".Translate());
+            }
                     return;
                 }
 
@@ -930,7 +975,13 @@ namespace UniversalBedFacilityCompat
                 // 内容已经和基线一模一样，就什么都不用做。
                 // 少了这一句，只要还存在退场床，每次 Initialize（包括自检触发的重跑）
                 // 都会把 LinkTableChanged 立起来，平白多触发一次全地图重链。
-                if (SameSequence(affected.linkableFacilities, baseLine))
+                //
+                // baseLine 可能是 null（原版本来就没有这个名单，见 bedBaseline 的存法）：
+                // 这时不能拿 null 去比 —— SameSequence 见到 null 一律返回 false，
+                // 「基线还没建立（null）」就会被当成「和现在不一样」，
+                // 于是每次重扫都白触发一次全地图重链。归一化成空表即可：
+                // null 与空表在「有没有东西要连」这件事上完全等价，比出来相同就是真的什么都没变。
+                if (SameSequence(affected.linkableFacilities, baseLine ?? EmptyDefList))
                 {
                     continue;
                 }
@@ -1051,6 +1102,20 @@ namespace UniversalBedFacilityCompat
             var merged = new Dictionary<CompProperties_Facility, List<ThingDef>>();
             var mergedSeen = new Dictionary<CompProperties_Facility, HashSet<ThingDef>>();
 
+            // 先建一张「组件配置 → 它属于哪个 Def」的对照表。
+            // 用途见下面写回那一遍：要把「自己」从自己的名单里剔掉，就得知道这个 props 是谁身上的。
+            // 注意好几个 Def 可能共用同一个 props 实例，所以遇到已记过的就跳过 ——
+            // 反正自连判定关心的是「名单里那项是不是它自己」，取哪一个都一样。
+            var propsOwner = new Dictionary<CompProperties_Facility, ThingDef>();
+            for (int i = 0; i < facilityRecords.Count; i++)
+            {
+                FacilityRecord rec = facilityRecords[i];
+                if (rec?.props != null && rec.def != null && !propsOwner.ContainsKey(rec.props))
+                {
+                    propsOwner[rec.props] = rec.def;
+                }
+            }
+
             for (int i = 0; i < facilityRecords.Count; i++)
             {
                 FacilityRecord rec = facilityRecords[i];
@@ -1097,6 +1162,24 @@ namespace UniversalBedFacilityCompat
             // 内容真的变了才把「改动过」这个标记立起来。
             foreach (KeyValuePair<CompProperties_Facility, List<ThingDef>> pair in merged)
             {
+                // 先剔除「自己连自己」，**必须放在下面的比较之前**。
+                //
+                // 为什么这件事要做：同一个 Def 同时挂了床和设施两个组件时，
+                // 它不该出现在自己的名单里（否则会凭空吃一份自己给的加成）。
+                // 注入侧（InjectIntoLinkingSide）与还原侧（OnFacilityResolveReferences）
+                // 都已经跳过了自连，这里补的是第三条路径 —— 万一某个 Def 的**基线本来就
+                // 带着自连**，重建时会把它原样写回去。
+                // propsOwner 的作用就是反查「这个组件配置属于哪个 Def」。
+                //
+                // 为什么顺序不能反：「有没有改动过」是拿剔除**之后**的名单跟当前名单比的。
+                // 要是把剔除放到比较后面，那么「唯一的变化就是自连被剔掉」这种情况
+                // 就不会立起 LinkTableChanged —— 地图上早就摆好的那件设施也就不会被重链，
+                // 它会继续吃自己给的那份加成，直到玩家重新进一次地图为止。
+                if (propsOwner.TryGetValue(pair.Key, out ThingDef selfDef))
+                {
+                    pair.Value.RemoveAll(delegate (ThingDef t) { return ReferenceEquals(t, selfDef); });
+                }
+
                 if (!SameSequence(pair.Key.linkableBuildings, pair.Value))
                 {
                     LinkTableChanged = true;
@@ -1161,7 +1244,11 @@ namespace UniversalBedFacilityCompat
                     continue;
                 }
 
-                if (SameSequence(props.linkableBuildings, pair.Value))
+                // pair.Value 可能是 null（原版本来就没有这个名单，见 facilityBaseline 的存法）：
+                // 同样不能拿 null 去比 —— SameSequence 见到 null 一律返回 false，
+                // 「基线还没建立（null）」会被当成「和现在不一样」，每次重扫都白触发一次全地图重链。
+                // 归一化成空表之后，null 基线与空名单才会被正确判成「没变化」。
+                if (SameSequence(props.linkableBuildings, pair.Value ?? EmptyDefList))
                 {
                     // 已经和基线一模一样，不用动它，也不必惊动重链。
                     continue;
@@ -1453,7 +1540,13 @@ namespace UniversalBedFacilityCompat
 
             // 这里没办法在不增加一大堆状态记录的前提下说清「到底是哪个模组改的」，
             // 所以只报一句警告；玩家打开详细日志后手动重扫一次，就能看到完整清单。
-            Log.Warning("[UBFC] " + "UBFC_Log_TablesTampered".Translate());
+            // 同样只报一次：每次 Initialize（含连点重扫）都会走到这里，
+            // 若链接表被持续篡改，不去重就会连着刷。
+            if (!tablesTamperedLogged)
+            {
+                tablesTamperedLogged = true;
+                Log.Warning("[UBFC] " + "UBFC_Log_TablesTampered".Translate());
+            }
 
             // 下面的重做会把注入数和重建数重新累加一遍，所以先把上一次的计数清零，
             // 免得设置界面的报告里出现双倍的数字。床数和设施数本方法不会改动，保持原样即可。
@@ -1686,7 +1779,8 @@ namespace UniversalBedFacilityCompat
 
             if (verbose)
             {
-                // 开了详细日志才列清单，而且还只列前 24 个，免得报告长到看不完。
+                // 开了详细日志才列清单，而且只列前 ReportSampleLimit 个（当前 8），免得报告长到看不完。
+                // 不写死数字：那个常量以后调了，这里也不会跟着过期。
                 lines.Add("UBFC_Report_FacilityList".Translate(SampleDefNames(bedFacilityDefs, ReportSampleLimit)).ToString());
                 lines.Add("UBFC_Report_BedList".Translate(SampleDefNames(bedDefs, ReportSampleLimit)).ToString());
             }

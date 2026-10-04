@@ -23,15 +23,24 @@ namespace UniversalBedFacilityCompat
         /// <summary>
         /// 补丁是不是已经成功装过了。
         ///
-        /// 这道守卫是必须有的：RimWorld 的 LoadedModManager.CreateModClasses() 一局之内会被调用很多次
-        /// —— 准确地说，每次你打开游戏内的「模组」页面，它都会把所有模组对象重新创建一遍。
+        /// 这道守卫是必须有的：RimWorld 的 LoadedModManager.CreateModClasses() 每次加载都会被调用
+        ///（打开游戏内的「模组」页面也会触发），但它靠 runningModClasses 这个静态字典去重 ——
+        /// 该字典从创建起就永不清空（全部读写点只有 CreateModClasses、GetMod 和 LoadedModManager
+        /// 的静态构造函数），所以正常路径下同一个 Mod 类只会构造一次。
+        /// 真正要防的是「首次构造就抛异常」：runningModClasses[type] = Activator.CreateInstance(...)
+        /// 是**先构造、后赋值**，构造抛异常时字典里留不下记录，下次还会再构造一次 ——
+        /// 那时补丁叠加才是真风险。
+        ///
         /// 而 Harmony 装补丁的方式是「往原方法上再叠一层」，不是替换：
         /// 所以同一处装两次就会有两层，装十次就有十层。
         /// 不加守卫地反复 PatchAll，会让同一个方法上叠满 Postfix，
         /// 表现就是「越操作越卡」，一直卡到死。
         ///
-        /// 另外，这个标志只在 PatchAll 成功之后才置位：万一这次因为环境问题失败了，
-        /// 下次构造 Mod 实例时还会再重试一遍，不至于因为这个标志把自己永久静默地禁用掉。
+        /// 失败时也照样把它立起来，这是刻意的，理由就是「防补丁叠层」：
+        /// PatchAll 是「一个补丁类一个补丁类地装」的，中途抛异常时前面几个很可能已经装上了。
+        /// 如果这时留着 false 让下次再 PatchAll 一遍，那几个已装上的补丁就会被叠上第二层 ——
+        /// 正是历史上「越操作越卡」的成因。两害相权取其轻：宁可这一局的保险丝没装上
+        ///（核心功能完全不依赖 Harmony），也绝不让补丁叠层把游戏拖垮。
         /// </summary>
         private static bool patchesApplied;
 

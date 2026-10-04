@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 
   <!-- ═══════════ Settings window ═══════════ -->
@@ -28,8 +28,8 @@
   <UBFC_Report_Beds>· Beds detected: {0}</UBFC_Report_Beds>
   <UBFC_Report_Facilities>· Bed facilities detected: {0}</UBFC_Report_Facilities>
   <UBFC_Report_Injected>· Bed links added: {0}</UBFC_Report_Injected>
-  <UBFC_Report_Rebuilt>· Facility link tables rebuilt: {0}</UBFC_Report_Rebuilt>
-  <UBFC_Report_BedsWithoutComp>· Note: {0} further beds lack a CompAffectedByFacilities comp, so facilities cannot attach to them at all. That has to be fixed by the mod owning those beds.</UBFC_Report_BedsWithoutComp>
+  <UBFC_Report_Rebuilt>· Link tables rebuilt: {0} (every def carrying a facility comp, usually more than the bed-facility count)</UBFC_Report_Rebuilt>
+  <UBFC_Report_BedsWithoutComp>· Note: {0} further bed def(s) lack a CompAffectedByFacilities comp, so facilities cannot attach to them at all. That has to be fixed by the mod owning those beds.</UBFC_Report_BedsWithoutComp>
   <UBFC_Report_ExtraBeds>· Of these, {0} are buildings that are not Building_Bed subclasses but are clearly beds, identified through their link tables</UBFC_Report_ExtraBeds>
   <UBFC_Report_FacilityList>· Facility list: {0}</UBFC_Report_FacilityList>
   <UBFC_Report_BedList>· Bed list: {0}</UBFC_Report_BedList>
