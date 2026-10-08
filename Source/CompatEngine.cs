@@ -113,6 +113,12 @@ namespace UniversalBedFacilityCompat
         private const int RelinkMapErrorKey = 0x55424646;
 
         /// <summary>
+        /// 「重新链接某一件设施时失败」的日志去重键，同样与上面几个错开。
+        /// 这个键只在 <see cref="RelinkMap"/> 的单件设施循环里用，粒度比 RelinkMapErrorKey 更细一层。
+        /// </summary>
+        private const int RelinkThingErrorKey = 0x55424647;
+
+        /// <summary>
         /// 详细报告里最多列出几个 defName，多出来的会折叠成「…(+N)」。
         ///
         /// 这个数不宜大：设置窗口是固定尺寸、既不能缩放也没有滚动条，
@@ -129,6 +135,20 @@ namespace UniversalBedFacilityCompat
         private const int ReportLineWrapWidth = 68;
 
         // ───────────────────────── 状态 ─────────────────────────
+
+        // 【线程安全约定：下面这些静态字段为什么刻意不加锁】
+        // 它们只在 Unity 主线程上被读写。这不是疏忽，而是 RimWorld 的运行约定：
+        //   · Initialize() 由 [StaticConstructorOnStartup] 触发，跑在 DoPlayLoad 的主线程上；
+        //   · CompatGameComponent 的 tick、设置窗口的绘制，同样都在主线程；
+        //   · 本模组挂的保险丝在 CompProperties_Facility.ResolveReferences 上，
+        //     它由 ThingDef.ResolveReferences 挨个组件地**串行**调用：
+        //     DefDatabase<T>.ResolveAllReferences 的签名是
+        //         (bool onlyExactlyMyType = true, bool parallel = false)
+        //     默认就是串行；PlayDataLoader.HotReloadDefs 里对 ThingDef 调的正是这个
+        //     不带参数的版本。真正并行的那两个（ThingCategoryDef / RecipeDef）
+        //     根本不经过本补丁。（2026-10-08 重新反编译核实过，别照着旧印象改。）
+        // 如果将来要把这些逻辑挪到后台线程，必须先把这些集合全部加锁 ——
+        // 否则 List / Dictionary 在并发写时会静默丢数据或抛异常。
 
         /// <summary>初始化是否已经成功跑完。Harmony 那层保险丝、以及重新链接地图的逻辑，都看这个开关决定要不要开工。</summary>
         public static bool Ready { get; private set; }
@@ -231,17 +251,6 @@ namespace UniversalBedFacilityCompat
         /// 已经在注入与还原两处被主动切断了（见 InjectIntoLinkingSide 与
         /// OnFacilityResolveReferences 里的自连跳过）。
         /// 注意只切「自己 → 自己」这一条：同一种家具之间互相加成是原版语义，那个不能动。
-        /// </summary>
-        /// <summary>
-        /// 下面这些静态集合（基线表、并集名单、各种缓存）**只在 Unity 主线程被访问**，
-        /// 所以刻意没有加锁。这不是疏忽，而是 RimWorld 的运行约定：
-        ///   ·Initialize() 由 [StaticConstructorOnStartup] 触发，在 DoPlayLoad 的主线程上跑；
-        ///   ·CompatGameComponent 的 tick、设置窗口的绘制，同样都在主线程；
-        ///   ·本模组挂的保险丝在 CompProperties_Facility.ResolveReferences 上
-        ///     （它是 ThingDef.ResolveReferences 串行往下调的一环），而那条路径是
-        ///     parallel:false 的（真并行的是 ThingCategoryDef / RecipeDef，它们不经过本补丁）。
-        /// 如果将来要把这些逻辑挪到后台线程，必须先把这些集合全部加锁 —— 否则 List / Dictionary
-        /// 在并发写时会静默丢数据或抛异常。
         /// </summary>
         private static int overlappingDefCount;
 
@@ -1693,6 +1702,13 @@ namespace UniversalBedFacilityCompat
             RebuildFacilityLinkTables();
             ApplyLinkLimitOverride();
             ApplyMaxDistanceFix();
+
+            // 上面这几步把统计数字（注入数 / 重建数）重新算了一遍，而设置界面的报告是
+            // **带缓存**的（见 BuildReport）：缓存只在「还没有缓存」或者「详细日志开关变了」
+            // 这两种情况下才会自动失效。所以这里必须主动清一次 ——
+            // 否则「玩家先开过设置窗口、之后自检又补了一轮注入」时，
+            // 报告会一直显示补注入之前的旧数字，与日志里的对不上。
+            reportCache = null;
             return true;
         }
 
@@ -1897,10 +1913,30 @@ namespace UniversalBedFacilityCompat
                         continue;
                     }
 
-                    // Notify_ThingChanged() 是原版公开的入口，内部做的事等价于 RelinkAll()，
-                    // 也就是「断开旧链接、重新连一遍」。
-                    comp.Notify_ThingChanged();
-                    touched++;
+                    // 每一件设施各包一层 try/catch，而不是只在调用本方法的外层循环里包。
+                    //
+                    // 为什么粒度要细到这一步：Notify_ThingChanged() 内部会走 CanLinkTo 之类的判定，
+                    // 途中可能调到别的模组覆写过的虚方法。要是其中某一件家具抛了异常，
+                    // 异常会直接从本方法冒出去，**同一张地图上排在它后面的家具就全都刷不到了** ——
+                    // 玩家看到的现象是「点了重新扫描，一部分柜子还是没反应」，极难排查。
+                    // 包在这一层之后，坏掉的那一件被跳过，同一张图上其余的照常处理。
+                    //
+                    // 用 ErrorOnce 而不是 Error：理由与上面几处一致，防止同一件坏家具反复刷屏；
+                    // 消息里带上 defName，是为了让这条「只报一次」的日志能直接指出是哪件家具。
+                    try
+                    {
+                        // Notify_ThingChanged() 是原版公开的入口，内部做的事等价于 RelinkAll()，
+                        // 也就是「断开旧链接、重新连一遍」。
+                        comp.Notify_ThingChanged();
+                        touched++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ErrorOnce(
+                            "[UBFC] " + "UBFC_Log_RelinkFailed".Translate()
+                            + " (" + def.defName + ")\n" + ex,
+                            RelinkThingErrorKey);
+                    }
                 }
             }
 

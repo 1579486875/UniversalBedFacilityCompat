@@ -6,8 +6,8 @@
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
-  <modVersion>1.0.6</modVersion>
-  <modIconPath IgnoreIfNoMatchingField="True">UBFC/ModIcon</modIconPath>
+  <modVersion>1.0.7</modVersion>
+  <modIconPath>UBFC/ModIcon</modIconPath>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>
@@ -34,8 +34,10 @@ RimWorld 要求「床」和「家具」互相登记备案：
 
 【一个真实例子】
 
-[MUS]太空基地家具 的床，白名单里只有自家那几件家具和原版的速眠装置，
-原版的衣柜、床头柜摆在床边它毫无反应。本模组会把这份名录补全。
+[MUS]太空基地家具 的床：1.5 版的四张床给自己登记过一份名录，里面只有自家那五件家具
+（储物柜、橱柜、课桌，各两种款式），原版的衣柜、床头柜摆在床边毫无反应；
+到了 1.6，作者干脆把这份名录整个删掉了。
+两种情况本模组都会处理 —— 名录不存在就先建一份再注入，已存在就把它补全。
 
 ────────────────
 它怎么做到的

@@ -36,9 +36,10 @@ namespace UniversalBedFacilityCompat
         /// 本局游戏是否已经处理过重链。
         ///
         /// 关于 [Unsaved]：GameComponent 基类的 ExposeData() 是空方法体、本类也没有覆写它，
-        /// 所以这几个字段本来就不会进存档，标 [Unsaved] 只是「明示意图」——
-        /// 防止将来有人加了 ExposeData() 却忘了排除它们（它另一个实际作用是让
-        /// XML 注入 / DefInjected 翻译跳过这些字段）。
+        /// 所以这几个字段本来就不会进存档，标 [Unsaved] 纯粹是「明示意图」——
+        /// 防止将来有人加了 ExposeData() 却忘了排除它们。
+        /// （注：[Unsaved] 只被 Def 的 XML 反序列化与 DefInjected 翻译识别，
+        ///   对 GameComponent 的普通字段没有实际作用，这里不要指望它替我们挡什么。）
         /// 另外每次进游戏（新开局或读档）游戏都会重新构造一个组件，这些值必然是初始值，
         /// 所以「每次载入存档后重新做一次」是自动成立的，不需要存档里记着什么。
         /// </summary>
