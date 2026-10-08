@@ -361,12 +361,12 @@ namespace UniversalBedFacilityCompat
                     // Def 列表是空的，说明游戏还没把数据读完（正常情况下不会发生）。
                     // 这时候什么都做不了，只能记一条警告然后收工。
                     // 只报一次：「立即重新扫描」按钮会反复触发本方法，
-            // 而「Def 数据库为空」不会因为多等一会儿就变好，重复报只是刷屏。
-            if (!emptyDatabaseLogged)
-            {
-                emptyDatabaseLogged = true;
-                Log.Warning("[UBFC] " + "UBFC_Log_EmptyDefDatabase".Translate());
-            }
+                    // 而「Def 数据库为空」不会因为多等一会儿就变好，重复报只是刷屏。
+                    if (!emptyDatabaseLogged)
+                    {
+                        emptyDatabaseLogged = true;
+                        Log.Warning("[UBFC] " + "UBFC_Log_EmptyDefDatabase".Translate());
+                    }
                     return;
                 }
 
@@ -1580,8 +1580,8 @@ namespace UniversalBedFacilityCompat
                 {
                     continue;
                 }
-                // HashSet.Add 返回 false 就表示「原本就在里面」，
-                // 正好顶上原来 AddIfMissing 内部那次 Contains。
+                // 用 HashSet.Add 的返回值一次搞定「查重 + 记入」：
+                // 返回 false 就说明「原本就在里面」。
                 if (fuseScratch.Add(bed))
                 {
                     props.linkableBuildings.Add(bed);
@@ -1651,11 +1651,21 @@ namespace UniversalBedFacilityCompat
         /// 启动之后的一次性完整性自检，由 <see cref="CompatGameComponent"/> 在第一个 tick 调用。
         ///
         /// 为什么需要它：本模组的扫描挂在 [StaticConstructorOnStartup] 上，而
-        /// StaticConstructorOnStartupUtility.CallAll() 是严格按**模组加载顺序**
-        /// 一个一个调用静态构造函数的。只要有一个排在本模组后面的模组，
-        /// 在自己的静态构造里把 CompProperties_Facility.linkableBuildings 整个重建了一遍
+        /// StaticConstructorOnStartupUtility.CallAll() 会**逐个**调用这些静态构造函数 ——
+        /// 只要有一个「在本模组之后才轮到」的类型，在自己的静态构造里把
+        /// CompProperties_Facility.linkableBuildings 整个重建了一遍
         /// （他们想把自家新家具接到自家新床上时就会这么写），
         /// 本模组写下的注入就会被无声无息地抹掉。
+        ///
+        /// ⚠ 2026-10-08 更正：这里原先写的是「严格按**模组加载顺序**」。那句是错的，
+        ///   本文件开头（「关于这个顺序的确切情况」那一段）已经用反编译推翻了它，
+        ///   当时漏改了这一处，形成「注释声称已统一、其实没统一」。准确的说法是：
+        ///     · CallAll() 确实是串行的，且每个类型单独 try/catch；
+        ///     · 但它拿到的那份类型列表来自
+        ///       GenTypes.AllTypesWithAttribute&lt;T&gt;()，
+        ///       而那个方法的实现是 `AllTypes.AsParallel().Where(...).ToList()` ——
+        ///       **与模组列表顺序并不等同**（详见文件开头那一段）。
+        ///   判据是「类型列表顺序」，而不是「模组加载顺序」。
         /// Harmony 保险丝只能覆盖「ResolveReferences 又被调用了一次」这一条路径，
         /// 覆盖不了「直接给字段换一张新列表」这种做法。
         ///
@@ -2011,7 +2021,8 @@ namespace UniversalBedFacilityCompat
         /// 免得报告长得没边。
         ///
         /// 拼好之后还会按 <see cref="ReportLineWrapWidth"/> 折行 ——
-        /// 因为设置面板的 Label 不会自动换行，不折的话整块面板会被撑破。
+        /// 纯粹是为了让这份 defName 清单在固定尺寸的面板里更可控
+        ///（这一段可能长达几百字符，主动按固定宽度断开比交给自动折行更可预测）。
         /// </summary>
         private static string SampleDefNames(List<ThingDef> defs, int max)
         {
@@ -2037,9 +2048,15 @@ namespace UniversalBedFacilityCompat
         /// <summary>
         /// 把一段长文本按固定字符数折成多行。
         ///
-        /// 为什么需要它：设置面板的文字是用 Widgets.Label 画的，而它<b>不会自动换行</b>，
-        /// 一行几百个字符会把整个面板的布局撑破，玩家反而看不到下面的开关和按钮。
-        /// 折行纯粹是为了好看，不改动任何数据。
+        /// 为什么需要它：设置面板的文字是用 Widgets.Label 画的。它**其实会自动折行**
+        ///（Verse.Text 的静态构造里 wordWrapInt = true，Widgets.Label 走的
+        /// Text.CurFontStyle 每次取用都会把 wordWrap 同步过去）——
+        /// 2026-10-08 反编译核实，原先这里写的「不会自动换行」是错的。
+        ///
+        /// 那我们为什么还要自己折：因为自动折行只看宽度，遇到一长串用「、」分隔的
+        /// defName 时断点位置不可预测，可能把某个名字从中间劈开。
+        /// 按固定字符数主动断开，读起来更整齐，也让面板高度可预期。
+        /// 折行纯粹为了好看，不改动任何数据。
         /// </summary>
         /// <param name="text">原始文本。</param>
         /// <param name="width">每行最多放几个字符。</param>

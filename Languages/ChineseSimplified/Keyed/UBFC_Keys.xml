@@ -10,13 +10,13 @@
   <UBFC_Set_Verbose_Tip>在日志里打印扫描统计、补全明细与重链耗时，并在下方报告里列出识别到的设施与床的 DefName。排查「某个柜子为什么对这张床不生效」时打开它。</UBFC_Set_Verbose_Tip>
 
   <UBFC_Set_Aggressive_Label>激进模式（把所有设施都当作床用）</UBFC_Set_Aggressive_Label>
-  <UBFC_Set_Aggressive_Tip>默认关闭。关闭时只处理能确认是「床用设施」的家具：它原本就能链接到至少一张床，或者带有明确绑床的放置约束。开启后，所有带 CompProperties_Facility 的家具都会参与床铺链接——用于收拾那些作者忘记挂接任何床、导致原本什么都连不上的家具。\n改动后请点下面的「重新扫描」以立即应用。</UBFC_Set_Aggressive_Tip>
+  <UBFC_Set_Aggressive_Tip>默认关闭。关闭时只处理能确认是「床用设施」的家具：它原本就能链接到至少一张床，或者带有明确绑床的放置约束。开启后，所有带 CompProperties_Facility 的家具都会参与床铺链接——用于收拾那些作者忘记挂接任何床、导致原本什么都连不上的家具。\n改动后请点下面的「立即重新扫描」以立即应用。</UBFC_Set_Aggressive_Tip>
 
   <UBFC_Set_LinkLimit_Label>忽略链接数量上限</UBFC_Set_LinkLimit_Label>
-  <UBFC_Set_LinkLimit_Tip>默认关闭。原版限制同一张床上同种设施最多生效一个（衣柜信息面板里的「每个建筑最大链接数」）。开启后这个上限被放开，一张床可以同时吃到多个同种设施。\n这会明显改变游戏平衡，请自行权衡。改动后请点下面的「重新扫描」。</UBFC_Set_LinkLimit_Tip>
+  <UBFC_Set_LinkLimit_Tip>默认关闭。原版限制同一张床上同种设施最多生效一个（衣柜信息面板里的「每个建筑最大链接数」）。开启后这个上限被放开，一张床可以同时吃到多个同种设施。\n这会明显改变游戏平衡，请自行权衡。改动后请点下面的「立即重新扫描」。</UBFC_Set_LinkLimit_Tip>
 
   <UBFC_Set_MaxDistance_Label>修正过小的链接距离</UBFC_Set_MaxDistance_Label>
-  <UBFC_Set_MaxDistance_Tip>默认开启。有些家具的最大链接距离被作者写成了小于一个格子的值（例如复古家具的泰迪熊是 0.9）。由于格子的最小间距是 1，这类数值在机制上等价于「必须和床占同一格」，放在床旁边永远连不上床。开启后会把这类距离抬到 2 格，让紧邻的床也能生效。\n只会改动取值落在 (0, 1) 之间的设施，其它距离一律不碰。改动后请点下面的「重新扫描」。</UBFC_Set_MaxDistance_Tip>
+  <UBFC_Set_MaxDistance_Tip>默认开启。有些家具的最大链接距离被作者写成了小于一个格子的值（例如复古家具的泰迪熊是 0.9）。由于格子的最小间距是 1，这类数值在机制上等价于「必须和床占同一格」，放在床旁边永远连不上床。开启后会把这类距离抬到 2 格，让紧邻的床也能生效。\n只会改动取值落在 (0, 1) 之间的设施，其它距离一律不碰。改动后请点下面的「立即重新扫描」。</UBFC_Set_MaxDistance_Tip>
 
   <UBFC_Button_Rescan>立即重新扫描</UBFC_Button_Rescan>
 

@@ -34,20 +34,39 @@
     <description>Exclusion lists for the automatic bed-facility linking. Both lists are empty by default.</description>
 
     <!--
-      两个清单刻意留空（也就是不写标签），这样 C# 字段上的 new List<ThingDef>() 默认值直接生效。
-      空的自定义列表标签在 RimWorld 的 DirectXmlToObject 里并没有明确语义，原版 XML 也从不这么写，
-      所以这里不冒这个险。
+      ⚠ 2026-10-08 修正：这两个空节点必须**真的写出来**，不能省。
 
-      需要填的时候照下面这样写（把标签连同内容一起补上即可）：
+      原先这里刻意不写标签，理由是「空的自定义列表标签在 RimWorld 的 DirectXmlToObject 里
+      并没有明确语义，原版 XML 也从不这么写」。那个顾虑经反编译核实**不成立** ——
+      Verse.DirectXmlToObject.ObjectFromXml 里明明白白写着：
+
+          if (!xmlRoot.HasChildNodes)
+          {
+              ...
+              if (GenTypes.IsListHashSetOrDictionary(typeFromHandle))
+                  return (T)Activator.CreateInstance(typeof(T));   // 空 List，不是 null
+          }
+
+      也就是说：空标签会被解析成一个**空列表**，C# 字段上的默认值不会因此丢失
+      （CompatEngine.CollectExclusions 对 null 另有兜底，属于双保险）。
+
+      反倒是不写标签会引出一个真问题：CompatPolicyDef.cs 的类注释、本文件的注释、
+      以及 README 的「人工排除」一节，**三处**都教人这样打补丁 ——
+
+          <xpath>Defs/UniversalBedFacilityCompat.CompatPolicyDef[defName="UBFC_DefaultPolicy"]/excludedFacilities</xpath>
+
+      xpath 打不中任何节点 → PatchOperationAdd 返回 false → 游戏刷一条
+      「Patch operation ... failed」红字，而玩家写的东西一个字都进不去。
+      逃生舱偏偏对最需要它的人失效，正是本模组最不想看到的情形。
+
+      所以：空节点留在这里，照文档打补丁就能命中。要填内容时直接往里加 <li> 即可：
 
         <excludedFacilities>
           <li>SomeMod_DecorativeDresser</li>
         </excludedFacilities>
-
-        <excludedBeds>
-          <li>SomeMod_DisplayOnlyBed</li>
-        </excludedBeds>
     -->
+    <excludedFacilities />
+    <excludedBeds />
   </UniversalBedFacilityCompat.CompatPolicyDef>
 
 </Defs>
