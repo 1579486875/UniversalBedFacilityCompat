@@ -39,9 +39,18 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <AssemblyName>UniversalBedFacilityCompat</AssemblyName>
-    <Version>1.0.7</Version>
+    <!-- ⚠ 这一行【不参与编译】—— 改它不会改变 DLL 里的版本号。
+         原因：下面设了 <GenerateAssemblyInfo>false</GenerateAssemblyInfo>，
+         自动生成的那份程序集信息被整个关掉了，真正生效的版本号在
+         Source\AssemblyInfo.cs 的 [assembly: AssemblyVersion(...)] 里。
+         **要升版本号，必须改 About.xml 与 AssemblyInfo.cs 这两处。**
+         （2026-10-11 审计时补上这条说明。） -->
+    <Version>1.0.8</Version>
     <RootNamespace>UniversalBedFacilityCompat</RootNamespace>
-    <LangVersion>latest</LangVersion>
+    <!-- 钉死语言版本：写 latest 会随 .NET SDK 漂移（本机装的 SDK 10 下就是 C# 14），
+         换一台机器、或者只是升级了 SDK，就可能编出不同语义、甚至直接编译失败。
+         net48 目标用 9.0 完全够用，本工程也没有用到任何 9.0 之后的语法。 -->
+    <LangVersion>9.0</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
 
