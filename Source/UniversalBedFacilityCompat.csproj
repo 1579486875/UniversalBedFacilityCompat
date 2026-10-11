@@ -45,7 +45,7 @@
          Source\AssemblyInfo.cs 的 [assembly: AssemblyVersion(...)] 里。
          **要升版本号，必须改 About.xml 与 AssemblyInfo.cs 这两处。**
          （2026-10-11 审计时补上这条说明。） -->
-    <Version>1.0.8</Version>
+    <Version>1.0.9</Version>
     <RootNamespace>UniversalBedFacilityCompat</RootNamespace>
     <!-- 钉死语言版本：写 latest 会随 .NET SDK 漂移（本机装的 SDK 10 下就是 C# 14），
          换一台机器、或者只是升级了 SDK，就可能编出不同语义、甚至直接编译失败。
