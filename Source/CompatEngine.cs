@@ -664,6 +664,14 @@ namespace UniversalBedFacilityCompat
 
                 // 线索 B：带着「必须摆在床边上」这类约束标记。
                 // 这三个字段里任意一个为真，都说明这件家具的用途跟床绑死了。
+                //
+                // 关于第三个字段 canLinkToMedBedsOnly：2026-10-12 做了一次全库静态审计
+                // （Core + 全部 DLC + 本地 Mods 与创意工坊两个目录，按版本段过滤只认 1.6），
+                // 结果是**没有任何一个 def 使用它**（前两个字段则有：原版 EndTable 走
+                // mustBePlacedAdjacentCardinalToBedHead，Ideology 的 SleepAccelerator 走
+                // mustBePlacedAdjacentCardinalToAndFacingBedHead）。
+                // 也就是说它目前是一条「前瞻性判据」：留着不是为了防当前存在的误判，
+                // 而是等将来有模组启用这个字段时能自动认出来。代码保持原样，仅在此备注。
                 bool isConfident = rec.props.mustBePlacedAdjacentCardinalToBedHead
                                    || rec.props.mustBePlacedAdjacentCardinalToAndFacingBedHead
                                    || rec.props.canLinkToMedBedsOnly;
