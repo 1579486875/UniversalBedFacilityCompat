@@ -24,7 +24,14 @@
     excludedBeds       —— 这些床保持原版行为，不接受本模组的通用链接注入。
 
   注意：本模组不新增任何 ThingDef、不新增任何建筑、不改动任何原版数据，
-  所以它不提供任何游戏内容，移除后也不会在存档里留下任何残留。
+  所以它不提供任何游戏内容。
+
+  ⚠ 2026-10-12 复审订正：这里原先接着写「移除后也不会在存档里留下任何残留」——
+    那句话**不准确**。程序集里的 CompatGameComponent 是一个 GameComponent，
+    RimWorld 会把它的类型名写进存档（实测 `Autosave-2.rws` 等确有
+    `<li Class="UniversalBedFacilityCompat.CompatGameComponent" />` 这一行）。
+    移除本模组后读档会报一条「找不到该类」的提示，游戏随即自动跳过并清理，
+    不崩、不坏档 —— 但「完全没有残留」是不成立的。详见 README 的「关于存档」一节。
 -->
 <Defs>
 
