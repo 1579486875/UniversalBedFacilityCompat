@@ -10,6 +10,16 @@
      因此必须编译成 net48，不能用 .NET Core / .NET 5+ 的目标框架，
      否则游戏加载程序集时会报「无法加载程序集」。
      本模组只用到 net48 就有的 API，没有额外依赖。
+     ⚠ 关于 1.7（2026-10-13 实测补注：上面这条只对 1.6 成立）
+       1.7 已换成自研引擎 Waylith + .NET 10（CoreCLR），不再是 Unity/Mono，
+       所以「必须 net48」对 1.7 不适用。实测两条路都通：
+         · 现有 net48 产物在 1.7 上能直接加载 —— Assembly-CSharp 与 0Harmony
+           都是弱名称程序集（PublicKeyToken=null），版本号不参与绑定；
+           UnityEngine 的引用由引擎自动 remap 到 UnityStubs.dll。
+         · 做 1.7 原生版：本源码【零改动】即可编为 net10.0 —— 只改
+           TargetFramework 为 net10.0，并把 UnityEngine*.dll 的引用换成 1.7 安装
+           目录下的 UnityStubs.dll（实测 0 警告 0 错误）。
+       两版共用同一份源码，不必分叉。
 
    输出路径：..\Assemblies\
      编译产物直接落到模组的 Assemblies 文件夹，游戏即可识别：
@@ -76,6 +86,9 @@
     <HarmonyDll Condition="'$(HarmonyDll)' == '' AND Exists('$(RimWorldDir)\Mods\0Harmony\Assemblies\0Harmony.dll')">$(RimWorldDir)\Mods\0Harmony\Assemblies\0Harmony.dll</HarmonyDll>
     <HarmonyDll Condition="'$(HarmonyDll)' == '' AND Exists('$(ManagedDir)\0Harmony.dll')">$(ManagedDir)\0Harmony.dll</HarmonyDll>
     <HarmonyDll Condition="'$(HarmonyDll)' == '' AND Exists('D:\steam\steamapps\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll')">D:\steam\steamapps\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll</HarmonyDll>
+    <!-- 2026-10-13 补：原探测链里漏了 1.6\Assemblies，而工坊那份包只有
+         带版本号的目录、没有 Current —— 结果就是默认路径不存在，必须显式传参。 -->
+    <HarmonyDll Condition="'$(HarmonyDll)' == '' AND Exists('D:\steam\steamapps\workshop\content\294100\2009463077\1.6\Assemblies\0Harmony.dll')">D:\steam\steamapps\workshop\content\294100\2009463077\1.6\Assemblies\0Harmony.dll</HarmonyDll>
     <HarmonyDll Condition="'$(HarmonyDll)' == ''">$(RimWorldDir)\Mods\Harmony\Assemblies\0Harmony.dll</HarmonyDll>
   </PropertyGroup>
 
