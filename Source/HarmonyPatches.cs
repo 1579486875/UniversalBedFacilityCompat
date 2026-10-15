@@ -20,11 +20,13 @@ namespace UniversalBedFacilityCompat
     /// 重要：就算补丁装载失败（比如玩家压根没启用 Harmony），核心功能依然是完整的，
     ///       只是少了这一层保险 —— CompatMod 会捕获异常并给出警告。
     ///
-    /// 已知的覆盖边界：ResolveReferences 在 1.6 里是 CompProperties_Facility 上的
-    /// `public override void ResolveReferences(ThingDef parentDef)`。本补丁打在基类的
-    /// 声明上，所以要是某个模组派生了 CompProperties_Facility 的子类、override 了这个方法
+    /// 已知的覆盖边界：ResolveReferences 在 1.6/1.7 里都是 CompProperties_Facility 上的
+    /// `public override void ResolveReferences(ThingDef parentDef)`（覆写自
+    /// Verse.CompProperties.ResolveReferences，两版方法签名一致，已反编译核对）。
+    /// 本补丁打的就是 CompProperties_Facility **自己这个方法体**，
+    /// 所以要是某个模组派生了 CompProperties_Facility 的子类、又 override 了这个方法
     /// 却不调用 base，那条路径就落在保险丝的保护范围之外了
-    /// （这是 Harmony 对虚方法的常规限制，不是本模组特有的毛病）。
+    /// （这是 Harmony 对覆写方法的常规限制，不是本模组特有的毛病）。
     /// 那种情况下，该子类自己的逻辑本来就是最后说了算的那一个，所以这个边界可以接受。
     /// </summary>
     [HarmonyPatch(typeof(CompProperties_Facility), nameof(CompProperties_Facility.ResolveReferences))]
