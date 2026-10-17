@@ -60,6 +60,7 @@ RimWorld 要求「床」和「床用家具」（衣柜、床头柜、屏风…�
 适用版本　　RimWorld 1.6 / 1.7
 前置依赖　　Harmony
 作者　　　　大赢经直插白皮赢道
+AI 协作　　　代码由 AI 助手「DeepSeek娘·汐蓝」辅助编写，作者负责设计、审阅与实机验证
 存档影响　　不改动存档里的任何游戏数据（只在存档里留一个本模组的空组件登记项）—— 加装或移除都不需要重开新档
 仓库与反馈　https://github.com/1579486875/UniversalBedFacilityCompat</description>
 </ModMetaData>

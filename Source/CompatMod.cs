@@ -1,3 +1,10 @@
+// ---------------------------------------------------------------------------
+// 本文件由 AI 助手「DeepSeek娘·汐蓝」辅助编写。
+// 设计、需求、审阅与实机验证由人类作者（大赢经直插白皮赢道）完成。
+// AI-assisted: written with DeepSeek Niang · Xi Lan (AI);
+// designed, reviewed and validated by the human author.
+// ---------------------------------------------------------------------------
+
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
