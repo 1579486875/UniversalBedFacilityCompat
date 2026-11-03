@@ -34,7 +34,7 @@
    两种编译方式：
      A) 命令行（推荐，不需要装 NuGet 包）：
           dotnet build "Source\UniversalBedFacilityCompat.csproj" -c Release `
-              -p:RimWorldDir="D:\steam\steamapps\common\RimWorld" `
+              -p:RimWorldDir="D:\RimWorld-1.6" `
               -p:HarmonyDll="<你的 0Harmony.dll 完整路径>"
 
      B) Visual Studio / Rider：直接用 IDE 打开本文件，
@@ -78,6 +78,15 @@
 
   <!-- ── 路径探测：全部可以被命令行上的同名属性覆盖 ── -->
   <PropertyGroup>
+    <!-- RimWorld 安装目录（含 RimWorldWin64_Data 的那一层）。
+         2026-11 起主安装升到 1.7（Waylith 引擎）：它把 Assembly-CSharp.dll 与 UnityStubs.dll
+         平铺在安装根目录，**既没有 Managed 目录，也没有 UnityEngine.dll** —— 直接拿它当
+         编译引用源会因为找不到 UnityEngine 而失败。所以这里按「谁带 Managed 目录就用谁」
+         的顺序探测，默认优先落到仍保留 Managed 的 1.6 安装上；1.6 编出来的 dll 在 1.7 上
+         照样能加载（1.7 的 WaythClr.LaxAssemblyBinding 会兜住程序集绑定），本机已实测。
+         要指定别的路径就传 -p:RimWorldDir="..."。 -->
+    <RimWorldDir Condition="'$(RimWorldDir)' == '' AND Exists('D:\steam\steamapps\common\RimWorld\RimWorldWin64_Data\Managed\Assembly-CSharp.dll')">D:\steam\steamapps\common\RimWorld</RimWorldDir>
+    <RimWorldDir Condition="'$(RimWorldDir)' == '' AND Exists('D:\RimWorld-1.6\RimWorldWin64_Data\Managed\Assembly-CSharp.dll')">D:\RimWorld-1.6</RimWorldDir>
     <RimWorldDir Condition="'$(RimWorldDir)' == ''">D:\steam\steamapps\common\RimWorld</RimWorldDir>
     <ManagedDir>$(RimWorldDir)\RimWorldWin64_Data\Managed</ManagedDir>
 
@@ -95,7 +104,7 @@
   <!-- 路径不存在时给出明确的中文报错，而不是让 csc 抛一句难懂的找不到引用 -->
   <Target Name="UbfcValidatePaths" BeforeTargets="ResolveAssemblyReferences">
     <Error Condition="!Exists('$(ManagedDir)\Assembly-CSharp.dll')"
-           Text="找不到 RimWorld 程序集：$(ManagedDir)\Assembly-CSharp.dll。请用 -p:RimWorldDir=&quot;你的 RimWorld 安装目录&quot; 指定正确路径。" />
+           Text="找不到 RimWorld 程序集：$(ManagedDir)\Assembly-CSharp.dll。注意 1.7（Waylith 引擎）把 dll 平铺在安装根目录，既没有 RimWorldWin64_Data\Managed、也没有 UnityEngine.dll，不能直接当编译引用源；请把 -p:RimWorldDir=&quot;...&quot; 指向仍带 Managed 目录的 1.6 安装，例如 -p:RimWorldDir=&quot;D:\RimWorld-1.6&quot;。" />
     <Error Condition="!Exists('$(HarmonyDll)')"
            Text="找不到 0Harmony.dll：$(HarmonyDll)。请用 -p:HarmonyDll=&quot;0Harmony.dll 的完整路径&quot; 指定（可在创意工坊 2009463077 或 Mods\Harmony\Assemblies 下找到）。" />
   </Target>
