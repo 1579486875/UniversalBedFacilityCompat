@@ -52,6 +52,7 @@
   <UBFC_Log_MaxDistanceFixed>距離修正：{0} 的最大連結距離原本是 {1}（小於一個格子，機制上等於永遠連不上床），已抬到 {2}。</UBFC_Log_MaxDistanceFixed>
   <UBFC_Log_TablesTampered>啟動後期偵測到床鋪連結表被其它模組重建，已就地重新注入。功能不受影響。</UBFC_Log_TablesTampered>
   <UBFC_Log_OverlappingDefs>注意：有 {0} 個 Def 既是床、又是床鋪家具。按原版規則它們會把自己寫進自己的連結表、憑空給自己一份加成；本模組已主動切斷這條「自己連自己」的記錄，它們與其它建築的連結不受影響。</UBFC_Log_OverlappingDefs>
+  <UBFC_Log_SkipNotice>掃描時有項目被跳過：原因={0}，def={1}。本局只提示這一次 —— 想看每一條跳過明細，請在「選項 → 模組設定」裡開啟「輸出詳細診斷日誌」。</UBFC_Log_SkipNotice>
 
   <UBFC_Log_FuseFailed>保險絲補齊失敗（本次跳過，不影響其它模組的 Def 初始化）：</UBFC_Log_FuseFailed>
 

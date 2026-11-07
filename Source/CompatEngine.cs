@@ -126,6 +126,35 @@ namespace UniversalBedFacilityCompat
         private const int RelinkThingErrorKey = 0x55424647;
 
         /// <summary>
+        /// 「本局已经就『有项目被跳过』提示过一次」。
+        ///
+        /// 为什么要限流：下面那几个跳过点会在一次扫描里被调用成百上千次（每遇到一个不符条件的
+        /// ThingDef 就是一次），逐条打会把日志刷爆 —— 那正是本模组历史上修过的事故类型。
+        /// 但完全不报又违反「跳过必须留一条日志」：下次排查时，没人知道这一项到底跑没跑过。
+        /// 折中：全局只报第一条，并指明「想看逐条明细请开详细日志」。
+        /// </summary>
+        private static bool skipNoticeLogged;
+
+        /// <summary>
+        /// 记一次「跳过」—— 全局只输出第一条。
+        ///
+        /// 调用点的语义是「我本来要处理这个东西，但因为 reason 而放弃了」。
+        /// 为什么非要有这条日志：没有它，玩家报「说好的功能没生效」时，
+        /// 我们连这一项到底有没有被扫到过都判断不了。
+        /// </summary>
+        /// <param name="reason">跳过原因的短标识（excluded / no-facility-comp），便于日志搜索。</param>
+        /// <param name="def">被跳过的 Def，可为 null。</param>
+        internal static void NoteSkip(string reason, ThingDef def)
+        {
+            if (skipNoticeLogged)
+            {
+                return;
+            }
+            skipNoticeLogged = true;
+            Log.Message("[UBFC] " + "UBFC_Log_SkipNotice".Translate(reason, def == null ? "null" : def.defName));
+        }
+
+        /// <summary>
         /// 详细报告里最多列出几个 defName，多出来的会折叠成「…(+N)」。
         ///
         /// 这个数不宜大：设置窗口是固定尺寸、既不能缩放也没有滚动条，
@@ -512,6 +541,8 @@ namespace UniversalBedFacilityCompat
                 if (def == null || excluded.Contains(def))
                 {
                     // 在排除名单里的家具直接跳过 —— 这就是「逃生舱」发挥作用的地方。
+                    // 留一条日志（全局只报第一条）：否则「我明明没排除它」这类反馈无从核对。
+                    NoteSkip("excluded", def);
                     continue;
                 }
 
@@ -571,6 +602,7 @@ namespace UniversalBedFacilityCompat
                 if (def == null || excluded.Contains(def) || !def.IsBed)
                 {
                     // 不是床、或者被玩家列进了黑名单，就跳过。
+                    NoteSkip(excluded.Contains(def) ? "excluded" : "not-a-bed", def);
                     continue;
                 }
 
@@ -764,6 +796,8 @@ namespace UniversalBedFacilityCompat
                 {
                     // 连「我愿意被设施影响」的组件都没有、或者名单是空的，
                     // 那就没有线索可查，跳过。
+                    // 这一类最需要留痕：它意味着「这张伪床永远不会被收编」，而玩家看不出来。
+                    NoteSkip("no-facility-comp", def);
                     continue;
                 }
 
